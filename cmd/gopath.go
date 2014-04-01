@@ -95,6 +95,7 @@ func autoLink(oldPath, newPath string) error {
 }
 
 func getChildPkgs(ctx *cli.Context, cpath string, ppkg *doc.Pkg, cachePkgs map[string]*doc.Pkg, isTest bool) error {
+	log.Trace("Current Path: 1 %s", cpath)
 	pkgs, err := getGopmPkgs(cpath, isTest)
 	if err != nil {
 		return errors.New("Fail to get gopmfile deps: " + err.Error())
@@ -209,6 +210,7 @@ func genNewGoPath(ctx *cli.Context, isTest bool) {
 		log.Error("", "Fail to get work directory:")
 		log.Fatal("", "\t"+err.Error())
 	}
+	log.Trace("Current Path: 0 %s", curPath)
 
 	installRepoPath = doc.HomeDir + "/repos"
 
@@ -228,8 +230,7 @@ func genNewGoPath(ctx *cli.Context, isTest bool) {
 	}
 
 	cachePkgs := make(map[string]*doc.Pkg)
-	err = getChildPkgs(ctx, curPath, nil, cachePkgs, isTest)
-	if err != nil {
+	if err = getChildPkgs(ctx, curPath, nil, cachePkgs, isTest); err != nil {
 		log.Error("", "Fail to get child pakcages:")
 		log.Fatal("", "\t"+err.Error())
 	}

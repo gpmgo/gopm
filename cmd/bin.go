@@ -79,11 +79,8 @@ func runBin(ctx *cli.Context) {
 	info := ctx.Args()[0]
 	pkgPath := info
 	node := doc.NewNode(pkgPath, pkgPath, doc.BRANCH, "", true)
-	var err error
 	if i := strings.Index(info, "@"); i > -1 {
 		pkgPath = info[:i]
-		node.ImportPath = pkgPath
-		node.DownloadURL = pkgPath
 		node.Type, node.Value = validPath(info[i+1:])
 	}
 
@@ -91,6 +88,9 @@ func runBin(ctx *cli.Context) {
 	if !strings.Contains(pkgPath, "/") {
 		pkgPath = doc.GetPkgFullPath(pkgPath)
 	}
+
+	node.ImportPath = pkgPath
+	node.DownloadURL = pkgPath
 
 	// Get code.
 	downloadPackages(ctx, []*doc.Node{node})

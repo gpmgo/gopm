@@ -7,3 +7,5 @@ github.com/Unknwon/com=
 github.com/Unknwon/goconfig=
 github.com/aybabtme/color=
 
+[exec]
+github.com/smartystreets/goconvey=tag:1.0
