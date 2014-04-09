@@ -165,6 +165,8 @@ func getByPath(ctx *cli.Context) {
 			pkgPath = doc.GetPkgFullPath(pkgPath)
 		}
 
+		node.ImportPath = pkgPath
+		node.DownloadURL = pkgPath
 		nodes = append(nodes, node)
 	}
 
