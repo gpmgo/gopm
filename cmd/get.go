@@ -31,7 +31,8 @@ import (
 var (
 	installRepoPath string // The path of gopm local repository.
 	installGopath   string // The first path in the GOPATH.
-	isHasGopath     bool   // Indicates whether system has GOPATH.
+	//review:in the code it is not used , instead ctx.bool("gopath") is used
+	isHasGopath bool // Indicates whether system has GOPATH.
 
 	downloadCache map[string]bool // Saves packages that have been downloaded.
 	downloadCount int
@@ -60,6 +61,7 @@ then all the packages go into gopm local repository.`,
 		cli.BoolFlag{"example, e", "download dependencies for example folder"},
 		cli.BoolFlag{"remote, r", "download all pakcages to gopm local repository"},
 		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"local,l", "download all packages to local gopath"},
 	},
 }
 
@@ -70,10 +72,22 @@ func init() {
 func runGet(ctx *cli.Context) {
 	setup(ctx)
 	// Check conflicts.
-	if ctx.Bool("gopath") && ctx.Bool("remote") {
+	if ctx.Bool("gopath") && ctx.Bool("remote") ||
+		ctx.Bool("local") && ctx.Bool("remote") ||
+		ctx.Bool("gopath") && ctx.Bool("local") {
+		e := " "
+		if ctx.Bool("gopath") {
+			e += "--gopth,-g "
+		}
+		if ctx.Bool("remote") {
+			e += "--remote,-r "
+		}
+		if ctx.Bool("local") {
+			e += "--local,-l "
+		}
 		log.Error("get", "Command options have conflicts")
 		log.Error("", "Following options are not supposed to use at same time:")
-		log.Error("", "\t'--gopath, -g' '--remote, -r'")
+		log.Error("", "\t"+e)
 		log.Help("Try 'gopm help get' to get more information")
 	}
 
@@ -94,6 +108,23 @@ func runGet(ctx *cli.Context) {
 				// It's OK that no GOPATH setting
 				// when user does not specify to use.
 				log.Warn("No GOPATH setting available")
+			}
+		}
+		// if flag local set use localPath as GOPATH
+		if ctx.Bool("local") {
+			if !com.IsExist(".gopmfile") {
+				runGen(ctx)
+			}
+			gf, err := goconfig.LoadConfigFile(".gopmfile")
+			if err != nil {
+				log.Fatal("get", err.Error())
+			} else {
+				installGopath = gf.MustValue("project", "localPath")
+				if installGopath == "" {
+					os.Remove(".gopmfile")
+					log.Fatal("get", "unexpected localPath or no localPath exists")
+				}
+				installGopath += "/src"
 			}
 		}
 	}
@@ -143,6 +174,7 @@ func getByGopmfile(ctx *cli.Context) {
 	}
 
 	downloadPackages(ctx, nodes)
+	//save vcs infromation in the .gopm/data
 	doc.SaveLocalNodes()
 
 	log.Log("%d package(s) downloaded, %d failed", downloadCount, failConut)
@@ -214,7 +246,9 @@ func downloadPackages(ctx *cli.Context, nodes []*doc.Node) {
 
 		// Valid import path.
 		gopathDir := path.Join(installGopath, n.ImportPath)
+		//RootPath is projectpath with certainn number set as VCS TYPE
 		n.RootPath = doc.GetProjectPath(n.ImportPath)
+		// installPath is the local  gopm repository path with certain VCS value
 		installPath := path.Join(installRepoPath, n.RootPath) + versionSuffix(n.Value)
 
 		if isSubpackage(n.RootPath, ".") {
@@ -234,7 +268,8 @@ func downloadPackages(ctx *cli.Context, nodes []*doc.Node) {
 					n.ImportPath, n.Type, doc.CheckNodeValue(n.Value))
 
 				// Only copy when no version control.
-				if ctx.Bool("gopath") && (com.IsExist(installPath) ||
+				// if local set copy to local gopath
+				if (ctx.Bool("gopath") || ctx.Bool("local")) && (com.IsExist(installPath) ||
 					len(getVcsName(gopathDir)) == 0) {
 					copyToGopath(installPath, gopathDir)
 				}
@@ -295,7 +330,9 @@ func downloadPackages(ctx *cli.Context, nodes []*doc.Node) {
 			doc.LocalNodes.SetValue(nod.RootPath, "value", nod.Revision)
 		}
 
-		if ctx.Bool("gopath") && com.IsExist(installPath) && !ctx.Bool("update") &&
+		//if update set downloadPackage will use VSC tools to download the package
+		//else just use puredownload to gopm repos and copy to gopath
+		if (ctx.Bool("gopath") || ctx.Bool("local")) && com.IsExist(installPath) && !ctx.Bool("update") &&
 			len(getVcsName(path.Join(installGopath, nod.RootPath))) == 0 {
 			copyToGopath(installPath, gopathDir)
 		}
@@ -314,7 +351,9 @@ func downloadPackage(ctx *cli.Context, nod *doc.Node) (*doc.Node, []string) {
 	var err error
 	gopathDir := path.Join(installGopath, nod.RootPath)
 	vcs := getVcsName(gopathDir)
-	if ctx.Bool("update") && ctx.Bool("gopath") && len(vcs) > 0 {
+	//if update set and gopath set and VCS tools set,
+	//use VCS tools  to download the package
+	if ctx.Bool("update") && (ctx.Bool("gopath") || ctx.Bool("local")) && len(vcs) > 0 {
 		err = updateByVcs(vcs, gopathDir)
 		imports = doc.GetAllImports([]string{gopathDir}, nod.RootPath, false, false)
 	} else {
@@ -337,6 +376,7 @@ func downloadPackage(ctx *cli.Context, nod *doc.Node) (*doc.Node, []string) {
 	return nod, imports
 }
 
+//check whether dirPath has .git .hg .svn else return ""
 func getVcsName(dirPath string) string {
 	switch {
 	case com.IsExist(path.Join(dirPath, ".git")):
@@ -349,6 +389,7 @@ func getVcsName(dirPath string) string {
 	return ""
 }
 
+//if vcs has been detected ,  use corresponding command to update dirPath
 func updateByVcs(vcs, dirPath string) error {
 	err := os.Chdir(dirPath)
 	if err != nil {

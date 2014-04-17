@@ -38,6 +38,7 @@ Make sure you run this command in the root path of a go project.`,
 	Flags: []cli.Flag{
 		cli.BoolFlag{"example, e", "check dependencies for example(s)"},
 		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"local,l", "gen local .gopmfile"},
 	},
 }
 
@@ -80,7 +81,20 @@ func runGen(ctx *cli.Context) {
 		}
 	}
 	gf.SetValue("res", "include", strings.Join(res, "|"))
-
+	//Set local path and init src bin pkg directories
+	if ctx.Bool("local") {
+		path, _ := com.RealPath(".")
+		gf.SetValue("project", "localPath", path)
+		if !com.IsDir(path + "/src") {
+			os.Mkdir(path+"/src", os.ModeDir|os.ModePerm)
+		}
+		if !com.IsDir(path + "/bin") {
+			os.Mkdir(path+"/bin", os.ModeDir|os.ModePerm)
+		}
+		if !com.IsDir(path + "pkg") {
+			os.Mkdir(path+"/pkg", os.ModeDir|os.ModePerm)
+		}
+	}
 	err = goconfig.SaveConfigFile(gf, ".gopmfile")
 	if err != nil {
 		log.Error("gen", "Fail to save gopmfile:")
