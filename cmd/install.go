@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/Unknwon/com"
@@ -79,6 +80,7 @@ func runInstall(ctx *cli.Context) {
 	}
 
 	genNewGoPath(ctx, false)
+	defer os.RemoveAll(doc.VENDOR)
 
 	var installRepos []string
 	if ctx.Bool("pkg") {

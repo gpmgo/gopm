@@ -115,12 +115,9 @@ func runBin(ctx *cli.Context) {
 		log.Fatal("", "\t"+err.Error())
 	}
 
+	defer os.RemoveAll(path.Join(repoPath, doc.VENDOR))
 	// Build application.
 	buildBinary(ctx)
-	defer func() {
-		// Clean files.
-		os.RemoveAll(path.Join(repoPath, doc.VENDOR))
-	}()
 
 	includes := make([]string, 0, 3)
 	// Check if previous steps were successful.

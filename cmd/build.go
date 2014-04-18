@@ -51,7 +51,9 @@ func runBuild(ctx *cli.Context) {
 		installGopath += "/src"
 	}
 
+	defer os.RemoveAll(doc.VENDOR)
 	buildBinary(ctx, ctx.Args()...)
+
 	log.Success("SUCC", "build", "Command executed successfully!")
 }
 

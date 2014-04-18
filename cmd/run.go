@@ -15,9 +15,12 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/Unknwon/com"
 	"github.com/codegangsta/cli"
 
+	"github.com/gpmgo/gopm/doc"
 	"github.com/gpmgo/gopm/log"
 )
 
@@ -43,6 +46,7 @@ func runRun(ctx *cli.Context) {
 	}
 
 	genNewGoPath(ctx, false)
+	defer os.RemoveAll(doc.VENDOR)
 
 	log.Trace("Running...")
 
