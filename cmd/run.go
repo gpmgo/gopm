@@ -16,9 +16,11 @@ package cmd
 
 import (
 	"github.com/Unknwon/com"
+	"github.com/Unknwon/goconfig"
 	"github.com/codegangsta/cli"
-
 	"github.com/gpmgo/gopm/log"
+	"os"
+	"strings"
 )
 
 var CmdRun = cli.Command{
@@ -27,13 +29,56 @@ var CmdRun = cli.Command{
 	Description: `Command run links dependencies according to gopmfile,
 and execute 'go run'
 
-gopm run <go run commands>`,
+gopm run <go run commands>
+gopm run -l  will recursively find .gopmfile with value localPath and run the cmd in the .gopmfile,windows os is unspported, you need to run the command right at the localPath dir.`,
 	Action: runRun,
+	Flags: []cli.Flag{
+		cli.BoolFlag{"local,l", "run command with local gopath context"},
+	},
 }
 
 func runRun(ctx *cli.Context) {
 	setup(ctx)
-
+	//support unix only
+	if ctx.Bool("local") {
+		var localPath string
+		var err error
+		var wd string
+		var gf *goconfig.ConfigFile
+		wd, _ = os.Getwd()
+		for wd != "/" {
+			gf, _ = goconfig.LoadConfigFile(".gopmfile")
+			if gf != nil {
+				localPath = gf.MustValue("project", "localPath")
+			}
+			if localPath != "" {
+				break
+			}
+			os.Chdir("..")
+			wd, _ = os.Getwd()
+		}
+		if wd == "/" {
+			log.Fatal("run", "no gopmfile in the directory or parent directory")
+		}
+		argss := gf.MustValue("run", "cmd")
+		if localPath == "" {
+			log.Fatal("run", "No localPath set")
+		}
+		args := strings.Split(argss, " ")
+		argsLen := len(args)
+		for i := 0; i < argsLen; i++ {
+			strings.Trim(args[i], " ")
+		}
+		if len(args) < 2 {
+			log.Fatal("run", "cmd arguments less than 2")
+		}
+		err = execCmd(localPath, localPath, args...)
+		if err != nil {
+			log.Error("run", "Fail to run program:")
+			log.Fatal("", "\t"+err.Error())
+		}
+		return
+	}
 	// Get GOPATH.
 	installGopath = com.GetGOPATHs()[0]
 	if com.IsDir(installGopath) {
@@ -41,7 +86,8 @@ func runRun(ctx *cli.Context) {
 		log.Log("Indicated GOPATH: %s", installGopath)
 		installGopath += "/src"
 	}
-
+	// run command with gopm repos context
+	// need version control , auto link to GOPATH/src repos
 	genNewGoPath(ctx, false)
 
 	log.Trace("Running...")
