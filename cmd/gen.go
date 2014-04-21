@@ -48,7 +48,9 @@ var commonRes = []string{"views", "templates", "static", "public", "conf"}
 func runGen(ctx *cli.Context) {
 	setup(ctx)
 
-	if !com.IsExist(".gopmfile") {
+	if com.IsExist(".gopmfile") {
+		//每次gen都清空一下,因为有一些手动改的地方不会去重
+		os.Remove(".gopmfile")
 		os.Create(".gopmfile")
 	}
 

@@ -36,8 +36,20 @@ func TestGetAndRun(t *testing.T) {
 	if !com.IsDir("src/github.com") {
 		t.Fatal("Get packages failed")
 	}
+	f, err := os.OpenFile(".gopmfile", os.O_RDWR|os.O_APPEND, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	f.Seek(0, 2)
+	_, err = f.WriteString(`localWd = src/test
+[run]
+cmd = go run main.go`)
+	if err != nil {
+		panic(err)
+	}
 	out, err := exec.Command("gopm", "run", "-l").Output()
 	if err != nil || string(out) != "TEST\n" {
-		t.Fatal("Run failed \t", err.Error())
+		t.Error(string(out))
 	}
 }

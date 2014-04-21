@@ -21,6 +21,7 @@ import (
 	"github.com/Unknwon/com"
 	"github.com/Unknwon/goconfig"
 	"github.com/codegangsta/cli"
+	"path"
 
 	"github.com/gpmgo/gopm/doc"
 	"github.com/gpmgo/gopm/log"
@@ -45,10 +46,12 @@ func runRun(ctx *cli.Context) {
 	//support unix only
 	if ctx.Bool("local") {
 		var localPath string
+		var localWd string
 		var err error
 		var wd string
 		var gf *goconfig.ConfigFile
 		wd, _ = os.Getwd()
+		//recursively find project .gopmfile
 		for wd != "/" {
 			gf, _ = goconfig.LoadConfigFile(".gopmfile")
 			if gf != nil {
@@ -67,6 +70,14 @@ func runRun(ctx *cli.Context) {
 		if localPath == "" {
 			log.Fatal("run", "No localPath set")
 		}
+		localWd = gf.MustValue("project", "localWd")
+		if localWd == "" {
+			localWd = localPath
+		}
+		// if not abs path , then join it with localPath
+		if !path.IsAbs(localWd) {
+			localWd = path.Join(localPath, localWd)
+		}
 		args := strings.Split(argss, " ")
 		argsLen := len(args)
 		for i := 0; i < argsLen; i++ {
@@ -75,7 +86,7 @@ func runRun(ctx *cli.Context) {
 		if len(args) < 2 {
 			log.Fatal("run", "cmd arguments less than 2")
 		}
-		err = execCmd(localPath, localPath, args...)
+		err = execCmd(localPath, localWd, args...)
 		if err != nil {
 			log.Error("run", "Fail to run program:")
 			log.Fatal("", "\t"+err.Error())
