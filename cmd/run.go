@@ -85,6 +85,7 @@ func runRun(ctx *cli.Context) {
 		}
 		if len(args) < 2 {
 			log.Fatal("run", "cmd arguments less than 2")
+			log.Fatal("run", "running .gopmfile cmd at "+localWd)
 		}
 		err = execCmd(localPath, localWd, args...)
 		if err != nil {
