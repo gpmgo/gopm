@@ -34,10 +34,15 @@ var CmdRun = cli.Command{
 and execute 'go run'
 
 gopm run <go run commands>
-gopm run -l  will recursively find .gopmfile with value localPath and run the cmd in the .gopmfile,windows os is unspported, you need to run the command right at the localPath dir.`,
+gopm run -l  will recursively find .gopmfile with value localPath and run the cmd in the .gopmfile,windows os is unspported, you need to run the command right at the localPath dir.
+gopm run -l -r run go souce command 
+gopm run -l -t run go test command
+`,
 	Action: runRun,
 	Flags: []cli.Flag{
 		cli.BoolFlag{"local,l", "run command with local gopath context"},
+		cli.BoolFlag{"test,t", "test go souce files"},
+		cli.BoolFlag{"run,r", "run go souce files"},
 	},
 }
 
@@ -66,7 +71,21 @@ func runRun(ctx *cli.Context) {
 		if wd == "/" {
 			log.Fatal("run", "no gopmfile in the directory or parent directory")
 		}
-		argss := gf.MustValue("run", "cmd")
+		var argss string
+		var args []string
+		args = ctx.Args()
+		var argsLen = len(args)
+		if argsLen == 1 {
+			args = append([]string{"go", "run"}, args...)
+		}
+		if ctx.Bool("run") {
+			argss = gf.MustValue("cmd", "run")
+			args = strings.Split(argss, " ")
+		}
+		if ctx.Bool("test") {
+			argss = gf.MustValue("cmd", "test")
+			args = strings.Split(argss, " ")
+		}
 		if localPath == "" {
 			log.Fatal("run", "No localPath set")
 		}
@@ -78,12 +97,11 @@ func runRun(ctx *cli.Context) {
 		if !path.IsAbs(localWd) {
 			localWd = path.Join(localPath, localWd)
 		}
-		args := strings.Split(argss, " ")
-		argsLen := len(args)
+		argsLen = len(args)
 		for i := 0; i < argsLen; i++ {
 			strings.Trim(args[i], " ")
 		}
-		if len(args) < 2 {
+		if argsLen < 2 {
 			log.Fatal("run", "cmd arguments less than 2")
 			log.Fatal("run", "running .gopmfile cmd at "+localWd)
 		}
