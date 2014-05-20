@@ -20,6 +20,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -166,8 +167,7 @@ func getBitbucketDoc(client *http.Client, match map[string]string, installRepoPa
 			return nil, err
 		}
 
-		_, err = com.SaveFile(absPath, fbytes)
-		if err != nil {
+		if err = ioutil.WriteFile(absPath, fbytes, 0655); err != nil {
 			return nil, err
 		}
 

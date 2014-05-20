@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -105,8 +106,7 @@ func getOSCDoc(client *http.Client, match map[string]string, installRepoPath str
 			return nil, err
 		}
 
-		_, err = com.SaveFile(absPath, fbytes)
-		if err != nil {
+		if err = ioutil.WriteFile(absPath, fbytes, 0655); err != nil {
 			return nil, err
 		}
 	}

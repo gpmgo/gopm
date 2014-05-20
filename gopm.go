@@ -1,4 +1,6 @@
-// Copyright 2013-2014 gopm authors.
+// +build go1.1
+
+// Copyright 2013 gopm authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -24,12 +26,7 @@ import (
 	"github.com/gpmgo/gopm/cmd"
 )
 
-// +build go1.1
-
-// Test that go1.1 tag above is included in builds. main.go refers to this definition.
-const go11tag = true
-
-const APP_VER = "0.6.5.0417"
+const APP_VER = "0.6.5.0520"
 
 //		cmd.CmdTest,
 //		cmd.CmdSearch,

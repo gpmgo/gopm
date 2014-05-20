@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -86,7 +87,7 @@ func runGen(ctx *cli.Context) {
 	gf.SetValue("res", "include", strings.Join(res, "|"))
 	//Set local path and init src bin pkg directories
 	if ctx.Bool("local") {
-		path, _ := com.RealPath(".")
+		path, _ := filepath.Abs(".")
 		gf.SetValue("project", "localPath", path)
 		if !com.IsDir(path + "/src") {
 			os.Mkdir(path+"/src", os.ModeDir|os.ModePerm)

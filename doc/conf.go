@@ -15,6 +15,7 @@
 package doc
 
 import (
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -89,7 +90,7 @@ func LoadPkgNameList(filePath string) {
 		return
 	}
 
-	data, err := com.ReadFile(filePath)
+	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Error("Package name list", "Fail to read file")
 		log.Fatal("", err.Error())

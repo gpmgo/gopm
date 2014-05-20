@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -165,8 +166,7 @@ func getGithubDoc(client *http.Client, match map[string]string, installRepoPath 
 				return nil, err
 			}
 
-			_, err = com.SaveFile(absPath, fbytes)
-			if err != nil {
+			if err = ioutil.WriteFile(absPath, fbytes, 0655); err != nil {
 				return nil, err
 			}
 

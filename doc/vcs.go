@@ -18,6 +18,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -282,7 +283,7 @@ func CheckImports(absPath, importPath string, nod *Node) (importPkgs []string, e
 	for _, fi := range fis {
 		// Only handle files.
 		if strings.HasSuffix(fi.Name(), ".go") {
-			data, err := com.ReadFile(absPath + fi.Name())
+			data, err := ioutil.ReadFile(absPath + fi.Name())
 			if err != nil {
 				return nil, err
 			}
