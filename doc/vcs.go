@@ -1,4 +1,4 @@
-// Copyright 2013-2014 gopm authors.
+// Copyright 2013 gopm authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain

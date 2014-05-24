@@ -26,7 +26,7 @@ import (
 	"github.com/gpmgo/gopm/cmd"
 )
 
-const APP_VER = "0.6.5.0520"
+const APP_VER = "0.6.5.0524"
 
 //		cmd.CmdTest,
 //		cmd.CmdSearch,

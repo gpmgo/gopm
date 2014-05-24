@@ -17,7 +17,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -90,7 +89,7 @@ func runUpdate(ctx *cli.Context) {
 			log.Fatal("", err.Error())
 		}
 
-		if err = ioutil.WriteFile(path.Join(doc.HomeDir, doc.PKG_NAME_LIST_PATH), data, 0655); err != nil {
+		if err = com.WriteFile(path.Join(doc.HomeDir, doc.PKG_NAME_LIST_PATH), data); err != nil {
 			log.Error("Update", "Fail to save pkgname.list")
 			log.Fatal("", err.Error())
 		}
