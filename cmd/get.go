@@ -271,9 +271,9 @@ func downloadPackages(ctx *cli.Context, nodes []*doc.Node) {
 
 				// Only copy when no version control.
 				// if local set copy to local gopath
-				if (ctx.Bool("gopath") || ctx.Bool("local")) && (com.IsExist(installPath) ||
+				if (ctx.Bool("gopath") || ctx.Bool("local")) && (com.IsExist(installPath) &&
 					len(getVcsName(gopathDir)) == 0) {
-					copyToGopath(installPath, gopathDir)
+					copyToGopath(installPath, path.Join(installGopath, n.RootPath))
 				}
 				continue
 			} else {
@@ -334,9 +334,9 @@ func downloadPackages(ctx *cli.Context, nodes []*doc.Node) {
 
 		//if update set downloadPackage will use VSC tools to download the package
 		//else just use puredownload to gopm repos and copy to gopath
-		if (ctx.Bool("gopath") || ctx.Bool("local")) && com.IsExist(installPath) && !ctx.Bool("update") &&
+		if (ctx.Bool("gopath") || ctx.Bool("local")) && com.IsExist(installPath) &&
 			len(getVcsName(path.Join(installGopath, nod.RootPath))) == 0 {
-			copyToGopath(installPath, gopathDir)
+			copyToGopath(installPath, path.Join(installGopath, n.RootPath))
 		}
 	}
 }
@@ -364,7 +364,9 @@ func downloadPackage(ctx *cli.Context, nod *doc.Node) (*doc.Node, []string) {
 			return nod, doc.GetAllImports([]string{path.Join(installRepoPath, nod.RootPath) + versionSuffix(nod.Value)},
 				nod.RootPath, ctx.Bool("example"), false)
 		}
-		nod.Revision = doc.LocalNodes.MustValue(nod.RootPath, "value")
+		if com.IsExist(path.Join(installRepoPath, nod.RootPath)) {
+			nod.Revision = doc.LocalNodes.MustValue(nod.RootPath, "value")
+		}
 		imports, err = doc.PureDownload(nod, installRepoPath, ctx) //CmdGet.Flags)
 	}
 
@@ -402,16 +404,17 @@ func updateByVcs(vcs, dirPath string) error {
 
 	switch vcs {
 	case "git":
-		branch, _, err := com.ExecCmd("git", "rev-parse", "--abbrev-ref", "HEAD")
+		branch, stderr, err := com.ExecCmd("git", "rev-parse", "--abbrev-ref", "HEAD")
 		if err != nil {
 			log.Error("", "Error occurs when 'git rev-parse --abbrev-ref HEAD'")
-			log.Error("", "\t"+err.Error())
+			log.Error("", "\t"+stderr)
 		}
+		branch = strings.TrimSpace(branch)
 
-		_, _, err = com.ExecCmd("git", "pull", "origin", branch)
+		_, stderr, err = com.ExecCmd("git", "pull", "origin", branch)
 		if err != nil {
 			log.Error("", "Error occurs when 'git pull origin "+branch+"'")
-			log.Error("", "\t"+err.Error())
+			log.Error("", "\t"+stderr)
 		}
 	case "hg":
 		_, stderr, err := com.ExecCmd("hg", "pull")
