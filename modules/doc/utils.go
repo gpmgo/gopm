@@ -1,4 +1,4 @@
-// Copyright 2013-2014 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -15,124 +15,98 @@
 package doc
 
 import (
-	"bytes"
+	// "fmt"
 	"go/build"
-	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
-	"time"
 
 	"github.com/Unknwon/com"
 
-	"github.com/gpmgo/gopm/log"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 const VENDOR = ".vendor"
 
-// GetDirsInfo returns os.FileInfo of all sub-directories in root path.
-func GetDirsInfo(rootPath string) ([]os.FileInfo, error) {
-	if !com.IsDir(rootPath) {
-		log.Warn("Directory %s does not exist", rootPath)
-		return []os.FileInfo{}, nil
+var (
+	hasGuessedGopath bool
+)
+
+// ParseTarget guesses import path of current package
+// if target is empty.
+func ParseTarget(target string) string {
+	if len(target) > 0 {
+		return target
 	}
 
-	rootDir, err := os.Open(rootPath)
-	if err != nil {
-		return nil, err
+	for _, gopath := range com.GetGOPATHs() {
+		if strings.HasPrefix(setting.WorkDir, gopath) {
+			target = strings.TrimPrefix(setting.WorkDir, path.Join(gopath, "src")+"/")
+			if !hasGuessedGopath {
+				hasGuessedGopath = true
+				log.Log("Guess import path: %s", target)
+			}
+			return target
+		}
 	}
-	defer rootDir.Close()
 
-	dirs, err := rootDir.Readdir(0)
-	if err != nil {
-		return nil, err
+	gopmPrefix := path.Join(setting.HomeDir, ".gopm/repos")
+	if strings.HasPrefix(setting.WorkDir, gopmPrefix) {
+		target = strings.TrimPrefix(setting.WorkDir, gopmPrefix+"/")
+		if !hasGuessedGopath {
+			hasGuessedGopath = true
+			log.Log("Guess import path: %s", target)
+		}
+		return target
 	}
-
-	return dirs, nil
+	return "."
 }
 
-// A Source describles a Source code file.
-type Source struct {
-	SrcName string
-	SrcData []byte
-}
-
-func (s *Source) Name() string       { return s.SrcName }
-func (s *Source) Size() int64        { return int64(len(s.SrcData)) }
-func (s *Source) Mode() os.FileMode  { return 0 }
-func (s *Source) ModTime() time.Time { return time.Time{} }
-func (s *Source) IsDir() bool        { return false }
-func (s *Source) Sys() interface{}   { return nil }
-func (s *Source) Data() []byte       { return s.SrcData }
-
-type Context struct {
-	build.Context
-	importPath string
-	srcFiles   map[string]*Source
-}
-
-func (ctx *Context) readDir(dir string) ([]os.FileInfo, error) {
-	fis := make([]os.FileInfo, 0, len(ctx.srcFiles))
-	for _, src := range ctx.srcFiles {
-		fis = append(fis, src)
+func joinPath(name string, num int) string {
+	subdirs := strings.Split(name, "/")
+	if len(subdirs) > num {
+		return strings.Join(subdirs[:num], "/")
 	}
-	return fis, nil
+	return name
 }
 
-func (ctx *Context) openFile(path string) (r io.ReadCloser, err error) {
-	if src, ok := ctx.srcFiles[filepath.Base(path)]; ok {
-		return ioutil.NopCloser(bytes.NewReader(src.Data())), nil
+// GetRootPath returns project root path.
+func GetRootPath(name string) string {
+	for prefix, num := range setting.RootPathPairs {
+		if strings.HasPrefix(name, prefix) {
+			return joinPath(name, num)
+		}
 	}
-	return nil, os.ErrNotExist
+	return name
+}
+
+// IsGoRepoPath returns true if package is from standard library.
+func IsGoRepoPath(name string) bool {
+	return com.IsDir(path.Join(runtime.GOROOT(), "src/pkg", name))
 }
 
 // GetImports returns package denpendencies.
-func GetImports(absPath, importPath string, example, test bool) []string {
-	fis, err := GetDirsInfo(absPath)
-	if err != nil {
-		log.Error("", "Fail to get directory's information")
-		log.Fatal("", err.Error())
+func GetImports(importPath, rootPath, srcPath string, isTest bool) []string {
+	if !com.IsExist(path.Join(setting.GopmLocalRepo, "src")) {
+		if err := os.Symlink(setting.GopmLocalRepo, path.Join(setting.GopmLocalRepo, "src")); err != nil {
+			log.Error("", "Fail to setting symlink:")
+			log.Fatal("", "\t"+err.Error())
+		}
 	}
-	absPath += "/"
+	oldGopath := os.Getenv("GOPATH")
 
-	ctx := new(Context)
-	ctx.importPath = importPath
-	ctx.srcFiles = make(map[string]*Source)
-	ctx.Context = build.Default
-	ctx.JoinPath = path.Join
-	ctx.IsAbsPath = path.IsAbs
-	ctx.ReadDir = ctx.readDir
-	ctx.OpenFile = ctx.openFile
-
-	// TODO: Load too much, need to make sure which is imported which are not.
-	dirs := make([]string, 0, 10)
-	for _, fi := range fis {
-		if strings.Contains(fi.Name(), VENDOR) {
-			continue
-		}
-
-		if fi.IsDir() {
-			dirs = append(dirs, absPath+fi.Name())
-			continue
-		} else if !test && strings.HasSuffix(fi.Name(), "_test.go") {
-			continue
-		} else if !strings.HasSuffix(fi.Name(), ".go") || strings.HasPrefix(fi.Name(), ".") ||
-			strings.HasPrefix(fi.Name(), "_") {
-			continue
-		}
-		src := &Source{SrcName: fi.Name()}
-		src.SrcData, err = ioutil.ReadFile(absPath + fi.Name())
-		if err != nil {
-			log.Error("", "Fail to read file")
-			log.Fatal("", err.Error())
-		}
-		ctx.srcFiles[fi.Name()] = src
+	sep := ":"
+	if runtime.GOOS == "windows" {
+		sep = ";"
 	}
 
-	pkg, err := ctx.ImportDir(absPath, build.AllowBinary)
+	ctxt := build.Default
+	ctxt.GOPATH = setting.GopmLocalRepo + sep + oldGopath
+	pkg, err := ctxt.Import(importPath, srcPath, build.AllowBinary)
 	if err != nil {
 		if _, ok := err.(*build.NoGoError); !ok {
 			log.Error("", "Fail to get imports")
@@ -140,115 +114,28 @@ func GetImports(absPath, importPath string, example, test bool) []string {
 		}
 	}
 
-	imports := make([]string, 0, len(pkg.Imports))
-	for _, p := range pkg.Imports {
-		if !IsGoRepoPath(p) && !strings.HasPrefix(p, importPath) {
-			imports = append(imports, p)
-		}
+	rawImports := pkg.Imports
+	length := len(pkg.Imports)
+	if isTest {
+		rawImports = append(rawImports, pkg.TestImports...)
+		length += len(pkg.TestImports)
 	}
-
-	if len(dirs) > 0 {
-		imports = append(imports, GetAllImports(dirs, importPath, example, test)...)
+	imports := make([]string, 0, length)
+	for _, name := range rawImports {
+		if IsGoRepoPath(name) {
+			continue
+		} else if strings.HasPrefix(name, rootPath) {
+			relPath, err := filepath.Rel(importPath, name)
+			if err != nil {
+				log.Error("", "Fail to get relative path of import")
+				log.Fatal("", err.Error())
+			}
+			imports = append(imports, GetImports(name, rootPath, "./"+relPath, isTest)...)
+			continue
+		}
+		imports = append(imports, name)
 	}
 	return imports
-}
-
-// isVcsPath returns true if the directory was created by VCS.
-func isVcsPath(dirPath string) bool {
-	return strings.Contains(dirPath, "/.git") ||
-		strings.Contains(dirPath, "/.hg") ||
-		strings.Contains(dirPath, "/.svn")
-}
-
-// GetAllImports returns all imports in given directory and all sub-directories.
-func GetAllImports(dirs []string, importPath string, example, test bool) (imports []string) {
-	for _, d := range dirs {
-		if !isVcsPath(d) &&
-			!(!example && strings.Contains(d, "example")) {
-			imports = append(imports, GetImports(d, importPath, example, test)...)
-		}
-	}
-	return imports
-}
-
-// GetGOPATH returns best matched GOPATH.
-func GetBestMatchGOPATH(appPath string) string {
-	paths := com.GetGOPATHs()
-	for _, p := range paths {
-		if strings.HasPrefix(p, appPath) {
-			return strings.Replace(p, "\\", "/", -1)
-		}
-	}
-	return paths[0]
-}
-
-// CheckIsExistWithVCS returns false if directory only has VCS folder,
-// or doesn't exist.
-func CheckIsExistWithVCS(path string) bool {
-	// Check if directory exist.
-	if !com.IsExist(path) {
-		return false
-	}
-
-	// Check if only has VCS folder.
-	dirs, err := GetDirsInfo(path)
-	if err != nil {
-		log.Error("", "Fail to get directory's information")
-		log.Fatal("", err.Error())
-	}
-
-	if len(dirs) > 1 {
-		return true
-	} else if len(dirs) == 0 {
-		return false
-	}
-
-	switch dirs[0].Name() {
-	case ".git", ".hg", ".svn":
-		return false
-	}
-
-	return true
-}
-
-// CheckIsExistInGOPATH checks if given package import path exists in any path in GOPATH/src,
-// and returns corresponding GOPATH.
-func CheckIsExistInGOPATH(importPath string) (string, bool) {
-	paths := com.GetGOPATHs()
-	for _, p := range paths {
-		if CheckIsExistWithVCS(p + "/src/" + importPath + "/") {
-			return p, true
-		}
-	}
-	return "", false
-}
-
-// GetProjectPath returns project path of import path.
-func GetProjectPath(importPath string) (projectPath string) {
-	projectPath = importPath
-
-	// Check project hosting.
-	switch {
-	case strings.HasPrefix(importPath, "github.com") ||
-		strings.HasPrefix(importPath, "git.oschina.net"):
-		projectPath = joinPath(importPath, 3)
-	case strings.HasPrefix(importPath, "code.google.com"):
-		projectPath = joinPath(importPath, 3)
-	case strings.HasPrefix(importPath, "bitbucket.org"):
-		projectPath = joinPath(importPath, 3)
-	case strings.HasPrefix(importPath, "launchpad.net"):
-		projectPath = joinPath(importPath, 2)
-	}
-
-	return projectPath
-}
-
-func joinPath(importPath string, num int) string {
-	subdirs := strings.Split(importPath, "/")
-	if len(subdirs) > num {
-		return strings.Join(subdirs[:num], "/")
-	}
-	return importPath
 }
 
 var validTLD = map[string]bool{
@@ -571,16 +458,16 @@ var validTLD = map[string]bool{
 	".zw":                     true,
 }
 
-var (
-	validHost        = regexp.MustCompile(`^[-a-z0-9]+(?:\.[-a-z0-9]+)+$`)
-	validPathElement = regexp.MustCompile(`^[-A-Za-z0-9~+][-A-Za-z0-9_.]*$`)
-)
+var validHost = regexp.MustCompile(`^[-a-z0-9]+(?:\.[-a-z0-9]+)+$`)
+var validPathElement = regexp.MustCompile(`^[-A-Za-z0-9~+][-A-Za-z0-9_.]*$`)
+
+func isValidPathElement(s string) bool {
+	return validPathElement.MatchString(s) && s != "testdata"
+}
 
 // IsValidRemotePath returns true if importPath is structurally valid for "go get".
 func IsValidRemotePath(importPath string) bool {
-
 	parts := strings.Split(importPath, "/")
-
 	if len(parts) <= 1 {
 		// Import path must contain at least one "/".
 		return false
@@ -593,167 +480,24 @@ func IsValidRemotePath(importPath string) bool {
 	if !validHost.MatchString(parts[0]) {
 		return false
 	}
+
 	for _, part := range parts[1:] {
-		if !validPathElement.MatchString(part) || part == "testdata" {
+		if !isValidPathElement(part) {
 			return false
 		}
 	}
-
 	return true
 }
 
-var standardPath = map[string]bool{
-	"builtin": true,
-
-	// go list -f '"{{.ImportPath}}": true,'  std | grep -v 'cmd/|exp/'
-	"cmd/api":             true,
-	"cmd/cgo":             true,
-	"cmd/fix":             true,
-	"cmd/go":              true,
-	"cmd/gofmt":           true,
-	"cmd/vet":             true,
-	"cmd/yacc":            true,
-	"archive/tar":         true,
-	"archive/zip":         true,
-	"bufio":               true,
-	"bytes":               true,
-	"compress/bzip2":      true,
-	"compress/flate":      true,
-	"compress/gzip":       true,
-	"compress/lzw":        true,
-	"compress/zlib":       true,
-	"container/heap":      true,
-	"container/list":      true,
-	"container/ring":      true,
-	"crypto":              true,
-	"crypto/aes":          true,
-	"crypto/cipher":       true,
-	"crypto/des":          true,
-	"crypto/dsa":          true,
-	"crypto/ecdsa":        true,
-	"crypto/elliptic":     true,
-	"crypto/hmac":         true,
-	"crypto/md5":          true,
-	"crypto/rand":         true,
-	"crypto/rc4":          true,
-	"crypto/rsa":          true,
-	"crypto/sha1":         true,
-	"crypto/sha256":       true,
-	"crypto/sha512":       true,
-	"crypto/subtle":       true,
-	"crypto/tls":          true,
-	"crypto/x509":         true,
-	"crypto/x509/pkix":    true,
-	"database/sql":        true,
-	"database/sql/driver": true,
-	"debug/dwarf":         true,
-	"debug/elf":           true,
-	"debug/gosym":         true,
-	"debug/macho":         true,
-	"debug/pe":            true,
-	"encoding/ascii85":    true,
-	"encoding/asn1":       true,
-	"encoding/base32":     true,
-	"encoding/base64":     true,
-	"encoding/binary":     true,
-	"encoding/csv":        true,
-	"encoding/gob":        true,
-	"encoding/hex":        true,
-	"encoding/json":       true,
-	"encoding/pem":        true,
-	"encoding/xml":        true,
-	"errors":              true,
-	"expvar":              true,
-	"flag":                true,
-	"fmt":                 true,
-	"go/ast":              true,
-	"go/build":            true,
-	"go/doc":              true,
-	"go/format":           true,
-	"go/parser":           true,
-	"go/printer":          true,
-	"go/scanner":          true,
-	"go/token":            true,
-	"hash":                true,
-	"hash/adler32":        true,
-	"hash/crc32":          true,
-	"hash/crc64":          true,
-	"hash/fnv":            true,
-	"html":                true,
-	"html/template":       true,
-	"image":               true,
-	"image/color":         true,
-	"image/draw":          true,
-	"image/gif":           true,
-	"image/jpeg":          true,
-	"image/png":           true,
-	"index/suffixarray":   true,
-	"io":                  true,
-	"io/ioutil":           true,
-	"log":                 true,
-	"log/syslog":          true,
-	"math":                true,
-	"math/big":            true,
-	"math/cmplx":          true,
-	"math/rand":           true,
-	"mime":                true,
-	"mime/multipart":      true,
-	"net":                 true,
-	"net/http":            true,
-	"net/http/cgi":        true,
-	"net/http/cookiejar":  true,
-	"net/http/fcgi":       true,
-	"net/http/httptest":   true,
-	"net/http/httputil":   true,
-	"net/http/pprof":      true,
-	"net/mail":            true,
-	"net/rpc":             true,
-	"net/rpc/jsonrpc":     true,
-	"net/smtp":            true,
-	"net/textproto":       true,
-	"net/url":             true,
-	"os":                  true,
-	"os/exec":             true,
-	"os/signal":           true,
-	"os/user":             true,
-	"path":                true,
-	"path/filepath":       true,
-	"reflect":             true,
-	"regexp":              true,
-	"regexp/syntax":       true,
-	"runtime":             true,
-	"runtime/cgo":         true,
-	"runtime/debug":       true,
-	"runtime/pprof":       true,
-	"runtime/race":        true,
-	"sort":                true,
-	"strconv":             true,
-	"strings":             true,
-	"sync":                true,
-	"sync/atomic":         true,
-	"syscall":             true,
-	"testing":             true,
-	"testing/iotest":      true,
-	"testing/quick":       true,
-	"text/scanner":        true,
-	"text/tabwriter":      true,
-	"text/template":       true,
-	"text/template/parse": true,
-	"time":                true,
-	"unicode":             true,
-	"unicode/utf16":       true,
-	"unicode/utf8":        true,
-	"unsafe":              true,
-}
-
-// IsGoRepoPath returns true if package is from standard library.
-func IsGoRepoPath(importPath string) bool {
-	return standardPath[importPath]
-}
-
-func CheckNodeValue(v string) string {
-	if len(v) == 0 {
-		return "<UTD>"
+// GetVcsName checks whether dirPath has .git .hg .svn else return ""
+func GetVcsName(dirPath string) string {
+	switch {
+	case com.IsExist(path.Join(dirPath, ".git")):
+		return "git"
+	case com.IsExist(path.Join(dirPath, ".hg")):
+		return "hg"
+	case com.IsExist(path.Join(dirPath, ".svn")):
+		return "svn"
 	}
-	return v
+	return ""
 }

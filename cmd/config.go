@@ -1,4 +1,4 @@
-// Copyright 2013-2014 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -15,46 +15,131 @@
 package cmd
 
 import (
-	"path"
+	"fmt"
 
-	"github.com/Unknwon/goconfig"
 	"github.com/codegangsta/cli"
 
-	"github.com/gpmgo/gopm/doc"
-	"github.com/gpmgo/gopm/log"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var CmdConfig = cli.Command{
 	Name:  "config",
-	Usage: "configurate gopm global settings",
-	Description: `Command config configurates gopm global settings
+	Usage: "configurate gopm settings",
+	Description: `Command config configurates gopm settings
 
+gopm config set proxy http://<username:password>@server:port
 gopm config github [client_id] [client_secret]
 `,
-	Action: runConfig,
+	Action:      runConfig,
+	Subcommands: configCommands,
 	Flags: []cli.Flag{
 		cli.BoolFlag{"verbose, v", "show process details"},
 	},
 }
 
+var configCommands = []cli.Command{
+	{
+		Name:        "set",
+		Usage:       "Change gopm settings",
+		Action:      runConfigSet,
+		Subcommands: configSetCommands,
+	},
+	{
+		Name:   "get",
+		Usage:  "Display gopm settings",
+		Action: runConfigGet,
+	},
+	{
+		Name:   "unset",
+		Usage:  "remove gopm settings",
+		Action: runConfigUnset,
+	},
+}
+
 func runConfig(ctx *cli.Context) {
+}
+
+var configSetCommands = []cli.Command{
+	{
+		Name:  "proxy",
+		Usage: "Change HTTP proxy setting",
+		Description: `Command proxy changes gopm HTTP proxy setting
+
+gopm config set proxy http://<username:password>@server:port
+`,
+		Action: runConfigSetProxy,
+	},
+	{
+		Name:  "github",
+		Usage: "Change GitHub credentials setting",
+		Description: `Command github changes GitHub credentials setting
+
+gopm config set github [client_id] [client_secret]
+`,
+		Action: runConfigSetGitHub,
+	},
+}
+
+func runConfigSet(ctx *cli.Context) {
+
+}
+
+func showSettingString(section, key string) {
+	fmt.Printf("%s = %s\n", key, setting.Cfg.MustValue(section, key))
+}
+
+func runConfigGet(ctx *cli.Context) {
 	setup(ctx)
-
-	if len(ctx.Args()) == 0 {
-		log.Error("config", "Cannot start command:")
-		log.Fatal("", "\tNo section specified")
+	if len(ctx.Args()) != 1 {
+		log.Error("config", "Incorrect number of arguments for command")
+		log.Error("", "\t'get' should have 1")
+		log.Help("Try 'gopm config get -h' to get more information")
 	}
-
-	switch ctx.Args()[0] {
+	switch ctx.Args().First() {
+	case "proxy":
+		fmt.Printf("[%s]\n", "settings")
+		showSettingString("settings", "HTTP_PROXY")
 	case "github":
-		if len(ctx.Args()) < 3 {
-			log.Error("config", "Cannot config section 'github'")
-			log.Fatal("", "\tNot enough arguments for client_id and client_secret")
-		}
-		doc.Cfg.SetValue("github", "client_id", ctx.Args()[1])
-		doc.Cfg.SetValue("github", "client_secret", ctx.Args()[2])
-		goconfig.SaveConfigFile(doc.Cfg, path.Join(doc.HomeDir, doc.GOPM_CONFIG_FILE))
+		fmt.Printf("[%s]\n", "github")
+		showSettingString("github", "CLIENT_ID")
+		showSettingString("github", "CLIENT_SECRET")
 	}
+}
 
-	log.Success("SUCC", "config", "Command executed successfully!")
+func runConfigUnset(ctx *cli.Context) {
+	setup(ctx)
+	if len(ctx.Args()) != 1 {
+		log.Error("config", "Incorrect number of arguments for command")
+		log.Error("", "\t'unset' should have 1")
+		log.Help("Try 'gopm config unset -h' to get more information")
+	}
+	switch ctx.Args().First() {
+	case "proxy":
+		setting.DeleteConfigOption("settings", "HTTP_PROXY")
+	case "github":
+		setting.DeleteConfigOption("github", "CLIENT_ID")
+		setting.DeleteConfigOption("github", "CLIENT_SECRET")
+	}
+}
+
+func runConfigSetProxy(ctx *cli.Context) {
+	setup(ctx)
+	if len(ctx.Args()) != 1 {
+		log.Error("config", "Incorrect number of arguments for command")
+		log.Error("", "\t'set proxy' should have 1")
+		log.Help("Try 'gopm config set help proxy' to get more information")
+	}
+	setting.SetConfigValue("settings", "HTTP_PROXY", ctx.Args().First())
+}
+
+func runConfigSetGitHub(ctx *cli.Context) {
+	setup(ctx)
+	if len(ctx.Args()) != 2 {
+		log.Error("config", "Incorrect number of arguments for command")
+		log.Error("", "\t'set github' should have 2")
+		log.Help("Try 'gopm config set help github' to get more information")
+	}
+	setting.SetConfigValue("github", "CLIENT_ID", ctx.Args().First())
+	setting.SetConfigValue("github", "CLIENT_SECRET", ctx.Args().Get(1))
 }

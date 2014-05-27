@@ -1,4 +1,4 @@
-// Copyright 2013-2014 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -12,20 +12,17 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package cmd
+package doc
 
 import (
-	"testing"
-
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/Unknwon/com"
 )
 
-func Test_parseTarget(t *testing.T) {
-	Convey("Target is empty", t, func() {
-		So(parseTarget(""), ShouldEqual, ".")
-	})
+var defaultTags = map[string]string{"git": MASTER, "hg": DEFAULT, "svn": TRUNK}
 
-	Convey("Target is not empty", t, func() {
-		So(parseTarget("github.com/gpmgo/gopm"), ShouldEqual, "github.com/gpmgo/gopm")
-	})
+func bestTag(tags map[string]string, defaultTag string) (string, string, error) {
+	if commit, ok := tags[defaultTag]; ok {
+		return defaultTag, commit, nil
+	}
+	return "", "", com.NotFoundError{"Tag or branch not found."}
 }

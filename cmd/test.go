@@ -1,4 +1,4 @@
-// Copyright 2013 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -15,9 +15,13 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/codegangsta/cli"
 
-	"github.com/gpmgo/gopm/log"
+	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var CmdTest = cli.Command{
@@ -28,20 +32,29 @@ and execute 'go test'
 
 gopm test <go test commands>`,
 	Action: runTest,
+	Flags: []cli.Flag{
+		cli.BoolFlag{"verbose, v", "show process details"},
+	},
 }
 
 func runTest(ctx *cli.Context) {
-	genNewGoPath(ctx, true)
+	setup(ctx)
+
+	os.RemoveAll(doc.VENDOR)
+	if !setting.Debug {
+		defer os.RemoveAll(doc.VENDOR)
+	}
+
+	_, newGopath, newCurPath := genNewGopath(ctx, true)
 
 	log.Trace("Testing...")
 
 	cmdArgs := []string{"go", "test"}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
-	err := execCmd(newGoPath, newCurPath, cmdArgs...)
-	if err != nil {
-		log.Error("Test", "Fail to test program")
-		log.Fatal("", err.Error())
+	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
+		log.Error("test", "Fail to run program:")
+		log.Fatal("", "\t"+err.Error())
 	}
 
-	log.Success("SUCC", "Test", "Command execute successfully!")
+	log.Success("SUCC", "test", "Command executed successfully!")
 }

@@ -1,6 +1,6 @@
 // +build go1.1
 
-// Copyright 2013 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -14,7 +14,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-// gopm(Go Package Manager) is a Go package manage tool for searching, installing, updating and sharing your packages in Go.
+// Gopm(Go Package Manager) is a Go package manage tool for searching, installing, updating and sharing packages in Go.
 package main
 
 import (
@@ -26,17 +26,7 @@ import (
 	"github.com/gpmgo/gopm/cmd"
 )
 
-const APP_VER = "0.6.5.0524"
-
-//		cmd.CmdTest,
-//		cmd.CmdSearch,
-// 		cmdClean,
-// 		cmdDoc,
-// 		cmdEnv,
-// 		cmdFix,
-// 		cmdList,
-// 		cmdTool,
-// 		cmdVet,
+const APP_VER = "0.6.5.0527 Beta"
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -44,22 +34,27 @@ func init() {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "gopm"
+	app.Name = "Gopm"
 	app.Usage = "Go Package Manager"
 	app.Version = APP_VER
 	app.Commands = []cli.Command{
-		cmd.CmdGet,
 		cmd.CmdBin,
-		// cmd.CmdExec,
 		cmd.CmdGen,
+		cmd.CmdGet,
+		cmd.CmdList,
+		cmd.CmdConfig,
 		cmd.CmdRun,
+		cmd.CmdTest,
 		cmd.CmdBuild,
 		cmd.CmdInstall,
-		cmd.CmdUpdate,
-		cmd.CmdConfig,
+		cmd.CmdClean,
+		// CmdSearch,
+		// CmdUpdate,
 	}
 	app.Flags = append(app.Flags, []cli.Flag{
-		cli.BoolFlag{"noterm", "disable color output"},
+		cli.BoolFlag{"noterm, n", "disable color output"},
+		cli.BoolFlag{"strict, s", "strict mode"},
+		cli.BoolFlag{"debug, d", "debug mode"},
 	}...)
 	app.Run(os.Args)
 }

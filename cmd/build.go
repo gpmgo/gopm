@@ -1,4 +1,4 @@
-// Copyright 2013 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -17,13 +17,13 @@ package cmd
 import (
 	"os"
 	"path"
-	"path/filepath"
 
 	"github.com/Unknwon/com"
 	"github.com/codegangsta/cli"
 
-	"github.com/gpmgo/gopm/doc"
-	"github.com/gpmgo/gopm/log"
+	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var CmdBuild = cli.Command{
@@ -36,48 +36,30 @@ gopm build <go build commands>`,
 	Action: runBuild,
 	Flags: []cli.Flag{
 		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any"},
+		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only"},
 		cli.BoolFlag{"verbose, v", "show process details"},
 	},
 }
 
-func runBuild(ctx *cli.Context) {
-	setup(ctx)
-
-	// Get GOPATH.
-	installGopath = com.GetGOPATHs()[0]
-	if com.IsDir(installGopath) {
-		isHasGopath = true
-		log.Log("Indicated GOPATH: %s", installGopath)
-		installGopath += "/src"
-	}
-
-	defer os.RemoveAll(doc.VENDOR)
-	buildBinary(ctx, ctx.Args()...)
-
-	log.Success("SUCC", "build", "Command executed successfully!")
-}
-
 func buildBinary(ctx *cli.Context, args ...string) {
-	genNewGoPath(ctx, false)
+	target, newGopath, newCurPath := genNewGopath(ctx, false)
 
 	log.Trace("Building...")
 
 	cmdArgs := []string{"go", "build"}
 	cmdArgs = append(cmdArgs, args...)
-	err := execCmd(newGoPath, newCurPath, cmdArgs...)
-	if err != nil {
+	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
 		log.Error("build", "fail to build program:")
 		log.Fatal("", "\t"+err.Error())
 	}
 
-	if isWindowsXP {
-		fName := path.Base(pkgName)
+	if setting.IsWindowsXP {
+		fName := path.Base(target)
 		binName := fName + ".exe"
 		os.Remove(binName)
-		exePath := filepath.Join(curPath, doc.VENDOR, "src", pkgName, binName)
+		exePath := path.Join(newCurPath, doc.VENDOR, "src", target, binName)
 		if com.IsFile(exePath) {
-			err = os.Rename(exePath, filepath.Join(curPath, binName))
-			if err != nil {
+			if err := os.Rename(exePath, path.Join(newCurPath, binName)); err != nil {
 				log.Error("build", "fail to move binary:")
 				log.Fatal("", "\t"+err.Error())
 			}
@@ -85,4 +67,16 @@ func buildBinary(ctx *cli.Context, args ...string) {
 			log.Warn("No binary generated")
 		}
 	}
+}
+
+func runBuild(ctx *cli.Context) {
+	setup(ctx)
+
+	os.RemoveAll(doc.VENDOR)
+	if !setting.Debug {
+		defer os.RemoveAll(doc.VENDOR)
+	}
+	buildBinary(ctx, ctx.Args()...)
+
+	log.Success("SUCC", "build", "Command executed successfully!")
 }

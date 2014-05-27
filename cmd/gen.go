@@ -1,4 +1,4 @@
-// Copyright 2013-2014 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -16,7 +16,7 @@ package cmd
 
 import (
 	"os"
-	"path/filepath"
+	"path"
 	"sort"
 	"strings"
 
@@ -24,13 +24,14 @@ import (
 	"github.com/Unknwon/goconfig"
 	"github.com/codegangsta/cli"
 
-	"github.com/gpmgo/gopm/doc"
-	"github.com/gpmgo/gopm/log"
+	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var CmdGen = cli.Command{
 	Name:  "gen",
-	Usage: "generate a gopmfile according current Go project",
+	Usage: "generate a gopmfile for current Go project",
 	Description: `Command gen gets dependencies and generates a gopmfile
 
 gopm gen
@@ -38,72 +39,59 @@ gopm gen
 Make sure you run this command in the root path of a go project.`,
 	Action: runGen,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"example, e", "check dependencies for example(s)"},
+		cli.BoolFlag{"local, l", "generate local GOPATH directories"},
 		cli.BoolFlag{"verbose, v", "show process details"},
-		cli.BoolFlag{"local,l", "gen local .gopmfile"},
 	},
 }
 
-var commonRes = []string{"views", "templates", "static", "public", "conf"}
-
 func runGen(ctx *cli.Context) {
 	setup(ctx)
-
-	if !com.IsExist(".gopmfile") {
-		os.Create(".gopmfile")
-	}
-
-	gf, err := goconfig.LoadConfigFile(".gopmfile")
-	if err != nil {
-		log.Error("gen", "Cannot load gopmfile:")
-		log.Fatal("", "\t"+err.Error())
-	}
-
-	targetPath := parseTarget(gf.MustValue("target", "path"))
-	// Get and set dependencies.
-	imports := doc.GetAllImports([]string{workDir}, targetPath, ctx.Bool("example"), false)
-	sort.Strings(imports)
-
-	for _, p := range imports {
-		p = doc.GetProjectPath(p)
-		// Skip subpackage(s) of current project.
-		if isSubpackage(p, targetPath) {
-			continue
-		}
-
-		// Check if user specified the version.
-		if value := gf.MustValue("deps", p); len(value) == 0 {
-			gf.SetValue("deps", p, "")
-		}
-	}
-
-	// Get and set resources.
-	res := make([]string, 0, len(commonRes))
-	for _, cr := range commonRes {
-		if com.IsExist(cr) {
-			res = append(res, cr)
-		}
-	}
-	gf.SetValue("res", "include", strings.Join(res, "|"))
-	//Set local path and init src bin pkg directories
+	gf, _, _ := genGopmfile()
 	if ctx.Bool("local") {
-		path, _ := filepath.Abs(".")
-		gf.SetValue("project", "localPath", path)
-		if !com.IsDir(path + "/src") {
-			os.Mkdir(path+"/src", os.ModeDir|os.ModePerm)
+		localGopath := gf.MustValue("project", "local_gopath")
+		if len(localGopath) == 0 {
+			localGopath = "./vendor"
+			gf.SetValue("project", "local_gopath", localGopath)
+			saveGopmfile(gf, setting.GOPMFILE)
 		}
-		if !com.IsDir(path + "/bin") {
-			os.Mkdir(path+"/bin", os.ModeDir|os.ModePerm)
-		}
-		if !com.IsDir(path + "pkg") {
-			os.Mkdir(path+"/pkg", os.ModeDir|os.ModePerm)
+
+		for _, name := range []string{"src", "pkg", "bin"} {
+			os.MkdirAll(path.Join(localGopath, name), os.ModePerm)
 		}
 	}
-	err = goconfig.SaveConfigFile(gf, ".gopmfile")
-	if err != nil {
-		log.Error("gen", "Fail to save gopmfile:")
-		log.Fatal("", "\t"+err.Error())
+	log.Success("SUCC", "gen", "Generate gopmfile successfully!")
+}
+
+// genGopmfile generates gopmfile and returns it,
+// along with target and dependencies.
+func genGopmfile() (*goconfig.ConfigFile, string, []string) {
+	if !com.IsExist(setting.GOPMFILE) {
+		os.Create(setting.GOPMFILE)
+	}
+	gf := loadGopmfile(setting.GOPMFILE)
+
+	// Check dependencies.
+	target := doc.ParseTarget(gf.MustValue("target", "path"))
+	imports := doc.GetImports(target, doc.GetRootPath(target), setting.WorkDir, false)
+	sort.Strings(imports)
+	for _, name := range imports {
+		name = doc.GetRootPath(name)
+		// Check if user has specified the version.
+		if val := gf.MustValue("deps", name); len(val) == 0 {
+			gf.SetValue("deps", name, "")
+		}
 	}
 
-	log.Success("SUCC", "gen", "Generate gopmfile successfully!")
+	// Check resources.
+	if _, err := gf.GetValue("res", "include"); err != nil {
+		resList := make([]string, 0, len(setting.CommonRes))
+		for _, res := range setting.CommonRes {
+			if com.IsExist(res) {
+				resList = append(resList, res)
+			}
+		}
+		gf.SetValue("res", "include", strings.Join(resList, "|"))
+	}
+	saveGopmfile(gf, setting.GOPMFILE)
+	return gf, target, imports
 }

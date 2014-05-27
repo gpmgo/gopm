@@ -1,4 +1,4 @@
-// Copyright 2013 gopm authors.
+// Copyright 2013 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -18,9 +18,10 @@ import (
 	"flag"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
-	"github.com/Unknwon/com"
+	"github.com/gpmgo/gopm/modules/log"
 )
 
 var (
@@ -39,14 +40,36 @@ type transport struct {
 func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	timer := time.AfterFunc(*requestTimeout, func() {
 		t.t.CancelRequest(req)
-		com.ColorLog("[WARN] Canceled request for %s, please interrupt the program.\n", req.URL)
+		log.Warn("Canceled request for %s, please interrupt the program.", req.URL)
 	})
 	defer timer.Stop()
 	resp, err := t.t.RoundTrip(req)
 	return resp, err
 }
 
+func (t *transport) SetProxy(proxy string) {
+	if len(proxy) == 0 {
+		return
+	}
+
+	proxyUrl, err := url.Parse(proxy)
+	if err != nil {
+		log.Error("", "Fail to set HTTP proxy:")
+		log.Fatal("", "\t"+err.Error())
+	}
+	t.t.Proxy = http.ProxyURL(proxyUrl)
+}
+
 var (
-	httpTransport = &transport{t: http.Transport{Dial: timeoutDial, ResponseHeaderTimeout: *requestTimeout / 2}}
-	HttpClient    = &http.Client{Transport: httpTransport}
+	httpTransport = &transport{
+		t: http.Transport{
+			Dial: timeoutDial,
+			ResponseHeaderTimeout: *requestTimeout / 2,
+		},
+	}
+	HttpClient = &http.Client{Transport: httpTransport}
 )
+
+func SetProxy(proxy string) {
+	httpTransport.SetProxy(proxy)
+}

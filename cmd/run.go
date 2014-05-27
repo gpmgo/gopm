@@ -1,4 +1,4 @@
-// Copyright 2013 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -18,12 +18,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Unknwon/com"
 	"github.com/Unknwon/goconfig"
 	"github.com/codegangsta/cli"
 
-	"github.com/gpmgo/gopm/doc"
-	"github.com/gpmgo/gopm/log"
+	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var CmdRun = cli.Command{
@@ -33,18 +33,22 @@ var CmdRun = cli.Command{
 and execute 'go run'
 
 gopm run <go run commands>
-gopm run -l  will recursively find .gopmfile with value localPath and run the cmd in the .gopmfile,windows os is unspported, you need to run the command right at the localPath dir.`,
+gopm run -l will recursively find .gopmfile with value localPath 
+and run the cmd in the .gopmfile, Windows hasn't supported yet,
+you need to run the command right at the local_gopath dir.`,
 	Action: runRun,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"local,l", "run command with local gopath context"},
+		cli.BoolFlag{"local, l", "run command with local gopath context"},
+		cli.BoolFlag{"verbose, v", "show process details"},
 	},
 }
 
 func runRun(ctx *cli.Context) {
 	setup(ctx)
-	//support unix only
+
+	// TODO: So ugly, need to fix.
 	if ctx.Bool("local") {
-		var localPath string
+		var localGopath string
 		var err error
 		var wd string
 		var gf *goconfig.ConfigFile
@@ -52,9 +56,9 @@ func runRun(ctx *cli.Context) {
 		for wd != "/" {
 			gf, _ = goconfig.LoadConfigFile(".gopmfile")
 			if gf != nil {
-				localPath = gf.MustValue("project", "localPath")
+				localGopath = gf.MustValue("project", "local_gopath")
 			}
-			if localPath != "" {
+			if localGopath != "" {
 				break
 			}
 			os.Chdir("..")
@@ -64,8 +68,8 @@ func runRun(ctx *cli.Context) {
 			log.Fatal("run", "no gopmfile in the directory or parent directory")
 		}
 		argss := gf.MustValue("run", "cmd")
-		if localPath == "" {
-			log.Fatal("run", "No localPath set")
+		if localGopath == "" {
+			log.Fatal("run", "No local GOPATH set")
 		}
 		args := strings.Split(argss, " ")
 		argsLen := len(args)
@@ -75,31 +79,26 @@ func runRun(ctx *cli.Context) {
 		if len(args) < 2 {
 			log.Fatal("run", "cmd arguments less than 2")
 		}
-		err = execCmd(localPath, localPath, args...)
-		if err != nil {
+		if err = execCmd(localGopath, localGopath, args...); err != nil {
 			log.Error("run", "Fail to run program:")
 			log.Fatal("", "\t"+err.Error())
 		}
 		return
 	}
-	// Get GOPATH.
-	installGopath = com.GetGOPATHs()[0]
-	if com.IsDir(installGopath) {
-		isHasGopath = true
-		log.Log("Indicated GOPATH: %s", installGopath)
-		installGopath += "/src"
+
+	os.RemoveAll(doc.VENDOR)
+	if !setting.Debug {
+		defer os.RemoveAll(doc.VENDOR)
 	}
-	// run command with gopm repos context
+	// Run command with gopm repos context
 	// need version control , auto link to GOPATH/src repos
-	genNewGoPath(ctx, false)
-	defer os.RemoveAll(doc.VENDOR)
+	_, newGopath, newCurPath := genNewGopath(ctx, false)
 
 	log.Trace("Running...")
 
 	cmdArgs := []string{"go", "run"}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
-	err := execCmd(newGoPath, newCurPath, cmdArgs...)
-	if err != nil {
+	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
 		log.Error("run", "Fail to run program:")
 		log.Fatal("", "\t"+err.Error())
 	}

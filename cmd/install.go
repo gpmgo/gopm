@@ -1,4 +1,4 @@
-// Copyright 2013-2014 gopm authors.
+// Copyright 2014 Unknown
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -16,13 +16,12 @@ package cmd
 
 import (
 	"os"
-	"path/filepath"
 
-	"github.com/Unknwon/com"
 	"github.com/codegangsta/cli"
 
-	"github.com/gpmgo/gopm/doc"
-	"github.com/gpmgo/gopm/log"
+	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var CmdInstall = cli.Command{
@@ -32,12 +31,12 @@ var CmdInstall = cli.Command{
 and execute 'go install'
 
 gopm install
-gopm install <import path>
 
 If no argument is supplied, then gopmfile must be present`,
 	Action: runInstall,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"pkg, p", "only install non-main packages"},
+		cli.BoolFlag{"package, p", "only install non-main packages"},
+		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only"},
 		cli.BoolFlag{"verbose, v", "show process details"},
 	},
 }
@@ -45,56 +44,29 @@ If no argument is supplied, then gopmfile must be present`,
 func runInstall(ctx *cli.Context) {
 	setup(ctx)
 
-	var target string
+	var target, srcPath string
 	switch len(ctx.Args()) {
 	case 0:
-		if !com.IsFile(".gopmfile") {
-			break
-		}
-
-		gf := doc.NewGopmfile(".")
-		target = gf.MustValue("target", "path")
-	case 1:
-		target = ctx.Args()[0]
+		_, target, _ = genGopmfile()
+		srcPath = setting.WorkDir
 	default:
-		log.Fatal("install", "Too many arguments")
+		log.Error("install", "Too many arguments:")
+		log.Error("", "\tno argument needed")
+		log.Help("Try 'gopm help install' to get more information")
 	}
 
-	// Get GOPATH.
-	installGopath = com.GetGOPATHs()[0]
-	if com.IsDir(installGopath) {
-		isHasGopath = true
-		log.Log("Indicated GOPATH: %s", installGopath)
-		installGopath += "/src"
-	} else {
-		if ctx.Bool("gopath") {
-			log.Error("get", "Invalid GOPATH path")
-			log.Error("", "GOPATH does not exist or is not a directory:")
-			log.Error("", "\t"+installGopath)
-			log.Help("Try 'go help gopath' to get more information")
-		} else {
-			// It's OK that no GOPATH setting
-			// when user does not specify to use.
-			log.Warn("No GOPATH setting available")
-		}
-	}
+	os.RemoveAll(doc.VENDOR)
 
-	genNewGoPath(ctx, false)
-	defer os.RemoveAll(doc.VENDOR)
-
-	var installRepos []string
-	if ctx.Bool("pkg") {
-		curPath, _ := filepath.Abs(".")
-		installRepos = doc.GetAllImports([]string{curPath}, ".", ctx.Bool("example"), false)
-	} else {
-		if len(target) == 0 {
-			target = pkgName
-		}
-
-		installRepos = []string{target}
-	}
+	_, newGopath, newCurPath := genNewGopath(ctx, false)
 
 	log.Trace("Installing...")
+
+	var installRepos []string
+	if ctx.Bool("package") {
+		installRepos = doc.GetImports(target, doc.GetRootPath(target), srcPath, false)
+	} else {
+		installRepos = []string{target}
+	}
 
 	for _, repo := range installRepos {
 		cmdArgs := []string{"go", "install"}
@@ -103,8 +75,7 @@ func runInstall(ctx *cli.Context) {
 			cmdArgs = append(cmdArgs, "-v")
 		}
 		cmdArgs = append(cmdArgs, repo)
-		err := execCmd(newGoPath, newCurPath, cmdArgs...)
-		if err != nil {
+		if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
 			log.Error("install", "Fail to install program:")
 			log.Fatal("", "\t"+err.Error())
 		}
