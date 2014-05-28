@@ -45,7 +45,9 @@ var services = []*service{
 	{googlePattern, "code.google.com/", getGoogleDoc},
 	{bitbucketPattern, "bitbucket.org/", getBitbucketDoc},
 	{oscPattern, "git.oschina.net/", getOSCDoc},
-	// {launchpadPattern, "launchpad.net/", getLaunchpadDoc},
+	// {gitcafePattern, "gitcafe.com/", getGitcafeDoc},
+	// {csdnPattern, "code.csdn.net/", getCsdnDoc},
+	{launchpadPattern, "launchpad.net/", getLaunchpadDoc},
 }
 
 type RevisionType string
@@ -363,6 +365,10 @@ func (n *Node) Download(ctx *cli.Context) ([]string, error) {
 		}
 		return s.get(HttpClient, match, n, ctx)
 
+	}
+
+	if n.ImportPath != n.DownloadURL {
+		return nil, errors.New("Didn't find any match service")
 	}
 
 	log.Log("Cannot match any service, getting dynamic...")
