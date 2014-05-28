@@ -1,4 +1,4 @@
-// +build go1.1
+// +build go1.2
 
 // Copyright 2014 Unknown
 //
@@ -26,7 +26,7 @@ import (
 	"github.com/gpmgo/gopm/cmd"
 )
 
-const APP_VER = "0.6.5.0527 Beta"
+const APP_VER = "0.6.6.0528 Beta"
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())

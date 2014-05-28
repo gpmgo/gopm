@@ -44,8 +44,8 @@ var services = []*service{
 	{githubPattern, "github.com/", getGithubDoc},
 	{googlePattern, "code.google.com/", getGoogleDoc},
 	{bitbucketPattern, "bitbucket.org/", getBitbucketDoc},
+	{oscPattern, "git.oschina.net/", getOSCDoc},
 	// {launchpadPattern, "launchpad.net/", getLaunchpadDoc},
-	// {oscPattern, "git.oschina.net/", getOSCDoc},
 }
 
 type RevisionType string
