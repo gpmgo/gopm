@@ -15,29 +15,31 @@
 package doc
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path"
 	"regexp"
 	"strings"
-	"time"
+	// "time"
 
-	"github.com/Unknwon/cae/zip"
+	// "github.com/Unknwon/cae/tz"
 	"github.com/Unknwon/com"
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/log"
-	"github.com/gpmgo/gopm/modules/setting"
+	// "github.com/gpmgo/gopm/modules/setting"
 )
 
 var (
-	oscTagRe      = regexp.MustCompile(`/repository/archive\?ref=(.*)">`)
-	oscRevisionRe = regexp.MustCompile(`<span class='sha'>[a-z0-9A-Z]*`)
-	oscPattern    = regexp.MustCompile(`^git\.oschina\.net/(?P<owner>[a-z0-9A-Z_.\-]+)/(?P<repo>[a-z0-9A-Z_.\-]+)(?P<dir>/[a-z0-9A-Z_.\-/]*)?$`)
+	gitcafeRevisionRe = regexp.MustCompile(`<i class="icon-push"></i>[a-z0-9A-Z]*`)
+	gitcafePattern    = regexp.MustCompile(`^gitcafe\.com/(?P<owner>[a-z0-9A-Z_.\-]+)/(?P<repo>[a-z0-9A-Z_.\-]+)(?P<dir>/[a-z0-9A-Z_.\-/]*)?$`)
 )
 
-func getOSCDoc(
+func getGitcafeDoc(
 	client *http.Client,
 	match map[string]string,
 	n *Node,
@@ -55,17 +57,17 @@ func getOSCDoc(
 
 		// Get revision.
 		p, err := com.HttpGetBytes(client,
-			com.Expand("http://git.oschina.net/{owner}/{repo}/tree/{sha}", match), nil)
+			com.Expand("http://gitcafe.com/{owner}/{repo}/tree/{sha}", match), nil)
 		if err != nil {
 			log.Warn("GET", "Fail to fetch revision page")
 			log.Fatal("", "\t"+err.Error())
 		}
 
-		if m := oscRevisionRe.FindSubmatch(p); m == nil {
+		if m := gitcafeRevisionRe.FindSubmatch(p); m == nil {
 			log.Warn("GET", "Fail to get revision")
 			log.Fatal("", "\t"+err.Error())
 		} else {
-			etag := strings.TrimPrefix(string(m[0]), `<span class='sha'>`)
+			etag := strings.TrimPrefix(string(m[0]), `<i class="icon-push"></i>`)
 			if etag == n.Revision {
 				log.Log("GET Package hasn't changed: %s", n.ImportPath)
 				return nil, nil
@@ -78,30 +80,55 @@ func getOSCDoc(
 		return nil, fmt.Errorf("invalid node type: %s", n.Type)
 	}
 
-	// zip: http://{projectRoot}/repository/archive?ref={sha}
+	// tar.gz: http://{projectRoot}/tarball/{sha}
 
 	// Downlaod archive.
-	tmpPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
-		n.RootPath+"-"+fmt.Sprintf("%s", time.Now().Nanosecond())+".zip")
-	if err := com.HttpGetToFile(client,
-		com.Expand("http://git.oschina.net/{owner}/{repo}/repository/archive?ref={sha}", match),
-		nil, tmpPath); err != nil {
-		return nil, fmt.Errorf("fail to download archive(%s): %v", n.ImportPath, err)
+	p, err := com.HttpGetBytes(client, com.Expand("http://gitcafe.com/{owner}/{repo}/tarball/{sha}", match), nil)
+	if err != nil {
+		return nil, err
 	}
-	defer os.Remove(tmpPath)
 
 	// Remove old files.
 	os.RemoveAll(n.InstallPath)
 	os.MkdirAll(path.Dir(n.InstallPath), os.ModePerm)
 
-	tmpExtPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
-		n.RootPath+"-"+fmt.Sprintf("%s", time.Now().Nanosecond()))
-	// To prevent same output folder name, need to extract to temp path then move.
-	if err := zip.ExtractTo(tmpPath, tmpExtPath); err != nil {
-		return nil, fmt.Errorf("fail to extract archive(%s): %v", n.ImportPath, err)
-	} else if err = os.Rename(path.Join(tmpExtPath, com.Expand("{repo}", match)),
-		n.InstallPath); err != nil {
-		return nil, fmt.Errorf("fail to rename directory(%s): %v", n.ImportPath, err)
+	tr := tar.NewReader(bytes.NewReader(p))
+
+	var rootPath string
+	// Get source file data.
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+
+		fname := h.Name
+		if fname == "pax_global_header" {
+			continue
+		}
+
+		if len(rootPath) == 0 {
+			rootPath = fname[:strings.Index(fname, match["repo"])+len(match["repo"])]
+		}
+		absPath := strings.Replace(fname, rootPath, n.InstallPath, 1)
+
+		switch {
+		case h.FileInfo().IsDir():
+			// Create diretory before create file.
+			os.MkdirAll(absPath+"/", os.ModePerm)
+		case !strings.HasPrefix(fname, "."):
+			// Get data from archive.
+			fbytes := make([]byte, h.Size)
+			if _, err := io.ReadFull(tr, fbytes); err != nil {
+				return nil, err
+			}
+
+			if err = com.WriteFile(absPath, fbytes); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// Check if need to check imports.

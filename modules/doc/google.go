@@ -222,7 +222,7 @@ func getGoogleDoc(
 	} else {
 		// Downlaod archive.
 		tmpPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
-			n.RootPath+"-"+fmt.Sprintf("%s", time.Nanosecond)+".zip")
+			n.RootPath+"-"+fmt.Sprintf("%s", time.Now().Nanosecond())+".zip")
 		if err := com.HttpGetToFile(client,
 			com.Expand("http://{subrepo}{dot}{repo}.googlecode.com/archive/{tag}.zip", match),
 			nil, tmpPath); err != nil {
