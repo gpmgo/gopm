@@ -110,7 +110,7 @@ func getGithubDoc(
 	if err := com.HttpGetToFile(client,
 		com.Expand("https://github.com/{owner}/{repo}/archive/{sha}.zip", match),
 		nil, tmpPath); err != nil {
-		return nil, fmt.Errorf("fail to download archive(%s): %v", n.ImportPath, err)
+		return nil, fmt.Errorf("fail to download archive: %v", n.ImportPath, err)
 	}
 	defer os.Remove(tmpPath)
 
@@ -118,16 +118,19 @@ func getGithubDoc(
 	os.RemoveAll(n.InstallPath)
 	os.MkdirAll(path.Dir(n.InstallPath), os.ModePerm)
 
-	shaName := com.Expand("{repo}-{sha}", match)
-	if n.Type == TAG {
-		shaName = strings.Replace(shaName, "-v", "-", 1)
+	var rootDir string
+	var extractFn = func(fullName string, fi os.FileInfo) error {
+		if len(rootDir) == 0 {
+			rootDir = strings.Split(fullName, "/")[0]
+		}
+		return nil
 	}
 
-	if err := zip.ExtractTo(tmpPath, path.Dir(n.InstallPath)); err != nil {
-		return nil, fmt.Errorf("fail to extract archive(%s): %v", n.ImportPath, err)
-	} else if err = os.Rename(path.Join(path.Dir(n.InstallPath), shaName),
+	if err := zip.ExtractToFunc(tmpPath, path.Dir(n.InstallPath), extractFn); err != nil {
+		return nil, fmt.Errorf("fail to extract archive: %v", err)
+	} else if err = os.Rename(path.Join(path.Dir(n.InstallPath), rootDir),
 		n.InstallPath); err != nil {
-		return nil, fmt.Errorf("fail to rename directory(%s): %v", n.ImportPath, err)
+		return nil, fmt.Errorf("fail to rename directory: %v", err)
 	}
 
 	// Check if need to check imports.

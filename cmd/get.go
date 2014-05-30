@@ -143,6 +143,7 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 			if n.IsExist() {
 				if !skipCache[n.RootPath] {
 					skipCache[n.RootPath] = true
+					log.Log("%s", n.InstallPath)
 					log.Trace("Skipped installed package: %s", n.VerString())
 				}
 
@@ -230,6 +231,7 @@ func getByGopmfile(ctx *cli.Context) {
 		// Check if user specified the version.
 		if v := gf.MustValue("deps", name); len(v) > 0 {
 			n.Type, n.Value = validPkgInfo(v)
+			n = doc.NewNode(name, n.Type, n.Value, !ctx.Bool("download"))
 		}
 		nodes = append(nodes, n)
 	}

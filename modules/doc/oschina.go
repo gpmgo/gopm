@@ -82,11 +82,11 @@ func getOscDoc(
 
 	// Downlaod archive.
 	tmpPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
-		n.RootPath+"-"+fmt.Sprintf("%s", time.Now().Nanosecond())+".zip")
+		n.RootPath+"-"+fmt.Sprintf("%d", time.Now().Nanosecond())+".zip")
 	if err := com.HttpGetToFile(client,
 		com.Expand("http://git.oschina.net/{owner}/{repo}/repository/archive?ref={sha}", match),
 		nil, tmpPath); err != nil {
-		return nil, fmt.Errorf("fail to download archive(%s): %v", n.ImportPath, err)
+		return nil, fmt.Errorf("fail to download archive: %v", n.ImportPath, err)
 	}
 	defer os.Remove(tmpPath)
 
@@ -98,10 +98,10 @@ func getOscDoc(
 		n.RootPath+"-"+fmt.Sprintf("%s", time.Now().Nanosecond()))
 	// To prevent same output folder name, need to extract to temp path then move.
 	if err := zip.ExtractTo(tmpPath, tmpExtPath); err != nil {
-		return nil, fmt.Errorf("fail to extract archive(%s): %v", n.ImportPath, err)
+		return nil, fmt.Errorf("fail to extract archive: %v", n.ImportPath, err)
 	} else if err = os.Rename(path.Join(tmpExtPath, com.Expand("{repo}", match)),
 		n.InstallPath); err != nil {
-		return nil, fmt.Errorf("fail to rename directory(%s): %v", n.ImportPath, err)
+		return nil, fmt.Errorf("fail to rename directory: %v", n.ImportPath, err)
 	}
 
 	// Check if need to check imports.

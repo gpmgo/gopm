@@ -19,7 +19,10 @@ import (
 	"sort"
 
 	"github.com/Unknwon/com"
+	"github.com/Unknwon/goconfig"
 	"github.com/codegangsta/cli"
+
+	"github.com/gpmgo/gopm/modules/doc"
 )
 
 var CmdList = cli.Command{
@@ -36,9 +39,17 @@ Make sure you run this command in the root path of a go project.`,
 	},
 }
 
+func verSuffix(gf *goconfig.ConfigFile, name string) string {
+	val := gf.MustValue("deps", name)
+	if len(val) > 0 {
+		val = " @ " + val
+	}
+	return val
+}
+
 func runList(ctx *cli.Context) {
 	setup(ctx)
-	_, _, imports := genGopmfile()
+	gf, _, imports := genGopmfile()
 	list := make([]string, 0, len(imports))
 	for _, name := range imports {
 		if !com.IsSliceContainsStr(list, name) {
@@ -47,8 +58,9 @@ func runList(ctx *cli.Context) {
 	}
 	sort.Strings(list)
 
-	fmt.Println("Dependency list:")
+	fmt.Printf("Dependency list(%d):\n", len(list))
 	for _, name := range list {
-		fmt.Println("->", name)
+		name = doc.GetRootPath(name)
+		fmt.Printf("-> %s%s\n", name, verSuffix(gf, name))
 	}
 }

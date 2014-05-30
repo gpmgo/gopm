@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Unknwon/cae/zip"
@@ -100,11 +101,11 @@ func getBitbucketDoc(
 
 	// Downlaod archive.
 	tmpPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
-		n.RootPath+"-"+fmt.Sprintf("%s", time.Now().Nanosecond())+".zip")
+		n.RootPath+"-"+fmt.Sprintf("%d", time.Now().Nanosecond())+".zip")
 	if err := com.HttpGetToFile(client,
 		com.Expand("https://bitbucket.org/{owner}/{repo}/get/{commit}.zip", match),
 		nil, tmpPath); err != nil {
-		return nil, fmt.Errorf("fail to download archive(%s): %v", n.ImportPath, err)
+		return nil, fmt.Errorf("fail to download archive: %v", n.ImportPath, err)
 	}
 	defer os.Remove(tmpPath)
 
@@ -112,13 +113,19 @@ func getBitbucketDoc(
 	os.RemoveAll(n.InstallPath)
 	os.MkdirAll(path.Dir(n.InstallPath), os.ModePerm)
 
-	shaName := com.Expand("{owner}-{repo}-{commit}", match)
+	var rootDir string
+	var extractFn = func(fullName string, fi os.FileInfo) error {
+		if len(rootDir) == 0 {
+			rootDir = strings.Split(fullName, "/")[0]
+		}
+		return nil
+	}
 
-	if err := zip.ExtractTo(tmpPath, path.Dir(n.InstallPath)); err != nil {
-		return nil, fmt.Errorf("fail to extract archive(%s): %v", n.ImportPath, err)
-	} else if err = os.Rename(path.Join(path.Dir(n.InstallPath), shaName),
+	if err := zip.ExtractToFunc(tmpPath, path.Dir(n.InstallPath), extractFn); err != nil {
+		return nil, fmt.Errorf("fail to extract archive: %v", n.ImportPath, err)
+	} else if err = os.Rename(path.Join(path.Dir(n.InstallPath), rootDir),
 		n.InstallPath); err != nil {
-		return nil, fmt.Errorf("fail to rename directory(%s): %v", n.ImportPath, err)
+		return nil, fmt.Errorf("fail to rename directory: %v", n.ImportPath, err)
 	}
 
 	// Check if need to check imports.

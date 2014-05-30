@@ -23,7 +23,7 @@ USAGE:
    Gopm [global options] command [command options] [arguments...]
 
 VERSION:
-   0.7.0.0529 Beta
+   0.7.0.0530 Beta
 
 COMMANDS:
    bin		download and link dependencies and build binary
