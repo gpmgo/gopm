@@ -44,9 +44,8 @@ var services = []*service{
 	{githubPattern, "github.com/", getGithubDoc},
 	{googlePattern, "code.google.com/", getGoogleDoc},
 	{bitbucketPattern, "bitbucket.org/", getBitbucketDoc},
-	{oscPattern, "git.oschina.net/", getOSCDoc},
+	{oscPattern, "git.oschina.net/", getOscDoc},
 	{gitcafePattern, "gitcafe.com/", getGitcafeDoc},
-	// {csdnPattern, "code.csdn.net/", getCsdnDoc},
 	{launchpadPattern, "launchpad.net/", getLaunchpadDoc},
 }
 

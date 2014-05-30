@@ -23,7 +23,7 @@ USAGE:
    Gopm [global options] command [command options] [arguments...]
 
 VERSION:
-   0.6.7.0528 Beta
+   0.7.0.0529 Beta
 
 COMMANDS:
    bin		download and link dependencies and build binary
@@ -36,6 +36,7 @@ COMMANDS:
    build	link dependencies and go build
    install	link dependencies and go install
    clean	clean all temporary files
+   update	check and update gopm resources including itself
    help, h	Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:

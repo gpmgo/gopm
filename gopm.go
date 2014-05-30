@@ -26,7 +26,7 @@ import (
 	"github.com/gpmgo/gopm/cmd"
 )
 
-const APP_VER = "0.6.7.0529 Beta"
+const APP_VER = "0.7.0.0529 Beta"
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -48,8 +48,8 @@ func main() {
 		cmd.CmdBuild,
 		cmd.CmdInstall,
 		cmd.CmdClean,
+		cmd.CmdUpdate,
 		// CmdSearch,
-		// CmdUpdate,
 	}
 	app.Flags = append(app.Flags, []cli.Flag{
 		cli.BoolFlag{"noterm, n", "disable color output"},

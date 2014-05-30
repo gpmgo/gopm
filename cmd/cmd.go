@@ -92,6 +92,7 @@ func setup(ctx *cli.Context) {
 	}
 
 	setting.GopmLocalRepo = path.Join(setting.HomeDir, ".gopm/repos")
+	setting.GopmTempPath = path.Join(setting.HomeDir, ".gopm/temp")
 
 	setting.LocalNodesFile = path.Join(setting.HomeDir, ".gopm/data/localnodes.list")
 	setting.LoadLocalNodes()

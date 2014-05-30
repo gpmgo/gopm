@@ -37,7 +37,7 @@ var (
 	oscPattern    = regexp.MustCompile(`^git\.oschina\.net/(?P<owner>[a-z0-9A-Z_.\-]+)/(?P<repo>[a-z0-9A-Z_.\-]+)(?P<dir>/[a-z0-9A-Z_.\-/]*)?$`)
 )
 
-func getOSCDoc(
+func getOscDoc(
 	client *http.Client,
 	match map[string]string,
 	n *Node,

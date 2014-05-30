@@ -28,6 +28,7 @@ import (
 
 const (
 	GOPMFILE = ".gopmfile"
+	VERINFO  = "data/VERSION.json"
 
 	VERSION = 2014052701
 )
@@ -39,7 +40,9 @@ var (
 	WorkDir         string // The path of gopm was executed.
 	InstallRepoPath string // The gopm local repository.
 	InstallGopath   string
-	GopmLocalRepo   string
+
+	GopmLocalRepo string
+	GopmTempPath  string
 
 	LocalNodesFile string
 	LocalNodes     *goconfig.ConfigFile
@@ -58,7 +61,6 @@ var (
 		"bitbucket.org":   3,
 		"git.oschina.net": 3,
 		"gitcafe.com":     3,
-		"code.csdn.net":   3,
 		"launchpad.net":   2,
 		"labix.org":       3,
 	}
