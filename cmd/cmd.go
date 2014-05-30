@@ -183,18 +183,10 @@ func getGopmPkgs(
 					// Check version. there should chek
 					// local first because d:\ contains :
 					if com.IsDir(info) {
-						pkgs[name] = &doc.Pkg{
-							ImportPath: name,
-							Type:       doc.LOCAL,
-							Value:      info,
-						}
+						pkgs[name] = doc.NewPkg(name, doc.LOCAL, info)
 						continue
 					} else if i := strings.Index(info, ":"); i > -1 {
-						pkgs[name] = &doc.Pkg{
-							ImportPath: name,
-							Type:       doc.RevisionType(info[:i]),
-							Value:      info[i+1:],
-						}
+						pkgs[name] = doc.NewPkg(name, doc.RevisionType(info[:i]), info[i+1:])
 						continue
 					}
 				}
