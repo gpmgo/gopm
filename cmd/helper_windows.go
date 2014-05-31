@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,10 +30,16 @@ import (
 )
 
 func makeLink(srcPath, destPath string) error {
+	srcPath = strings.Replace(srcPath, "/", "\\", -1)
+	destPath = strings.Replace(destPath, "/", "\\", -1)
+
 	// Check if Windows version is XP.
 	if getWindowsVersion() >= 6 {
-		cmd := exec.Command("cmd", "/c", "mklink", "/j", destPath, srcPath)
-		return cmd.Run()
+		_, stderr, err := com.ExecCmd("cmd", "/c", "mklink", "/j", destPath, srcPath)
+		if err != nil {
+			return errors.New(stderr)
+		}
+		return nil
 	}
 
 	// XP.
@@ -44,8 +51,11 @@ func makeLink(srcPath, destPath string) error {
 		if err == nil {
 			path, _ := filepath.Abs(file)
 			if com.IsFile(path) {
-				cmd := exec.Command("cmd", "/c", "junction", destPath, srcPath)
-				return cmd.Run()
+				_, stderr, err := com.ExecCmd("cmd", "/c", "junction", destPath, srcPath)
+				if err != nil {
+					return errors.New(stderr)
+				}
+				return nil
 			}
 		}
 	}

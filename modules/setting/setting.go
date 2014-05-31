@@ -41,8 +41,7 @@ var (
 	InstallRepoPath string // The gopm local repository.
 	InstallGopath   string
 
-	GopmLocalRepo string
-	GopmTempPath  string
+	GopmTempPath string
 
 	LocalNodesFile string
 	LocalNodes     *goconfig.ConfigFile
@@ -53,6 +52,7 @@ var (
 	ConfigFile string
 	Cfg        *goconfig.ConfigFile
 
+	IsWindows   bool
 	IsWindowsXP bool
 
 	RootPathPairs = map[string]int{

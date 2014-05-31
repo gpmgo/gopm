@@ -91,10 +91,16 @@ func IsGoRepoPath(name string) bool {
 
 // GetImports returns package denpendencies.
 func GetImports(importPath, rootPath, srcPath string, isTest bool) []string {
-	if !com.IsExist(path.Join(setting.GopmLocalRepo, "src")) {
-		if err := os.Symlink(setting.GopmLocalRepo, path.Join(setting.GopmLocalRepo, "src")); err != nil {
-			log.Error("", "Fail to setting symlink:")
-			log.Fatal("", "\t"+err.Error())
+	tmpGopath := setting.InstallRepoPath
+	if setting.IsWindows {
+		// Windows's local repository path has "/src" suffix.
+		tmpGopath = path.Dir(tmpGopath)
+	} else {
+		if !com.IsExist(path.Join(setting.InstallRepoPath, "src")) {
+			if err := os.Symlink(setting.InstallRepoPath, path.Join(setting.InstallRepoPath, "src")); err != nil {
+				log.Error("", "Fail to setting symlink:")
+				log.Fatal("", "\t"+err.Error())
+			}
 		}
 	}
 	oldGopath := os.Getenv("GOPATH")
@@ -105,7 +111,7 @@ func GetImports(importPath, rootPath, srcPath string, isTest bool) []string {
 	}
 
 	ctxt := build.Default
-	ctxt.GOPATH = setting.GopmLocalRepo + sep + oldGopath
+	ctxt.GOPATH = tmpGopath + sep + oldGopath
 	pkg, err := ctxt.Import(importPath, srcPath, build.AllowBinary)
 	if err != nil {
 		if _, ok := err.(*build.NoGoError); !ok {

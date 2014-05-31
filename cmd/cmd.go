@@ -45,7 +45,13 @@ func setup(ctx *cli.Context) {
 		log.Error("setup", "Fail to get home directory:")
 		log.Fatal("", "\t"+err.Error())
 	}
+	setting.HomeDir = strings.Replace(setting.HomeDir, "\\", "/", -1)
+
 	setting.InstallRepoPath = path.Join(setting.HomeDir, ".gopm/repos")
+	if runtime.GOOS == "windows" {
+		setting.IsWindows = true
+		setting.InstallRepoPath = path.Join(setting.InstallRepoPath, "src")
+	}
 	log.Log("Local repository path: %s", setting.InstallRepoPath)
 
 	setting.WorkDir, err = os.Getwd()
@@ -91,7 +97,6 @@ func setup(ctx *cli.Context) {
 		}
 	}
 
-	setting.GopmLocalRepo = path.Join(setting.HomeDir, ".gopm/repos")
 	setting.GopmTempPath = path.Join(setting.HomeDir, ".gopm/temp")
 
 	setting.LocalNodesFile = path.Join(setting.HomeDir, ".gopm/data/localnodes.list")
