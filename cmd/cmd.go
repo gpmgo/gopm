@@ -52,6 +52,7 @@ func setup(ctx *cli.Context) {
 		setting.IsWindows = true
 		setting.InstallRepoPath = path.Join(setting.InstallRepoPath, "src")
 	}
+	os.MkdirAll(setting.InstallRepoPath, os.ModePerm)
 	log.Log("Local repository path: %s", setting.InstallRepoPath)
 
 	setting.WorkDir, err = os.Getwd()
