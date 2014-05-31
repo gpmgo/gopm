@@ -60,6 +60,7 @@ var (
 	// NOTE: need a safe map for future downloading packages concurrency.
 	downloadCache = make(map[string]bool)
 	skipCache     = make(map[string]bool)
+	copyCache     = make(map[string]bool)
 	downloadCount int
 	failConut     int
 )
@@ -148,7 +149,8 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 				}
 
 				// Only copy when no version control.
-				if ctx.Bool("gopath") || ctx.Bool("local") {
+				if !copyCache[n.RootPath] && (ctx.Bool("gopath") || ctx.Bool("local")) {
+					copyCache[n.RootPath] = true
 					n.CopyToGopath()
 				}
 				continue
@@ -202,7 +204,8 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 
 		// If update set downloadPackage will use VSC tools to download the package,
 		// else just download to local repository and copy to GOPATH.
-		if (ctx.Bool("gopath") || ctx.Bool("local")) && !nod.HasVcs() {
+		if !nod.HasVcs() && !copyCache[n.RootPath] && (ctx.Bool("gopath") || ctx.Bool("local")) {
+			copyCache[n.RootPath] = true
 			nod.CopyToGopath()
 		}
 	}
