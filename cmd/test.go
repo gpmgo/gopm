@@ -15,11 +15,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -38,20 +40,31 @@ gopm test <go test commands>`,
 }
 
 func runTest(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	os.RemoveAll(doc.VENDOR)
 	if !setting.Debug {
 		defer os.RemoveAll(doc.VENDOR)
 	}
 
-	_, newGopath, newCurPath := genNewGopath(ctx, true)
+	_, newGopath, newCurPath, err := genNewGopath(ctx, true)
+	if err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	log.Trace("Testing...")
 
 	cmdArgs := []string{"go", "test"}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
 	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Fail to run program: %v", err))
+			return
+		}
 		log.Error("test", "Fail to run program:")
 		log.Fatal("", "\t"+err.Error())
 	}

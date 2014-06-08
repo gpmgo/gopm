@@ -26,6 +26,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -51,8 +52,16 @@ contain main package`,
 }
 
 func runBin(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
+
 	if len(ctx.Args()) != 1 {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+			return
+		}
 		log.Error("bin", "Incorrect number of arguments for command")
 		log.Error("", "\tshould have 1")
 		log.Help("Try 'gopm help bin' to get more information")
@@ -60,6 +69,10 @@ func runBin(ctx *cli.Context) {
 
 	// Check if given directory exists if specified.
 	if ctx.IsSet("dir") && !com.IsDir(ctx.String("dir")) {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Indicated path does not exist or not a directory"))
+			return
+		}
 		log.Error("bin", "Cannot start command:")
 		log.Fatal("", "\tIndicated path does not exist or not a directory")
 	}
@@ -70,7 +83,12 @@ func runBin(ctx *cli.Context) {
 	n := doc.NewNode(pkgPath, doc.BRANCH, "", true)
 	if i := strings.Index(info, "@"); i > -1 {
 		pkgPath = info[:i]
-		n.Type, n.Value = validPkgInfo(info[i+1:])
+		var err error
+		n.Type, n.Value, err = validPkgInfo(info[i+1:])
+		if err != nil {
+			errors.SetError(err)
+			return
+		}
 	}
 
 	// Check package name.
@@ -81,10 +99,17 @@ func runBin(ctx *cli.Context) {
 		}
 	}
 
-	downloadPackages(".", ctx, []*doc.Node{n})
+	if err := downloadPackages(".", ctx, []*doc.Node{n}); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	// Check if previous steps were successful.
 	if !n.IsExist() {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Download steps weren't successful"))
+			return
+		}
 		log.Error("bin", "Cannot continue command:")
 		log.Fatal("", "\tDownload steps weren't successful")
 	}
@@ -94,6 +119,10 @@ func runBin(ctx *cli.Context) {
 	// Change to repository path.
 	log.Log("Changing work directory to %s", buildPath)
 	if err := os.Chdir(buildPath); err != nil {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Fail to change work directory: %v", err))
+			return
+		}
 		log.Error("bin", "Fail to change work directory:")
 		log.Fatal("", "\t"+err.Error())
 	}
@@ -105,9 +134,16 @@ func runBin(ctx *cli.Context) {
 		defer os.RemoveAll(path.Join(buildPath, doc.VENDOR))
 	}
 
-	buildBinary(ctx)
+	if err := buildBinary(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
-	gf, target, _ := genGopmfile()
+	gf, target, _, err := genGopmfile()
+	if err != nil {
+		errors.SetError(err)
+		return
+	}
 	if target == "." {
 		_, target = filepath.Split(setting.WorkDir)
 	}
@@ -118,6 +154,10 @@ func runBin(ctx *cli.Context) {
 		binName += ".exe"
 	}
 	if !com.IsFile(binName) {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Previous steps weren't successful or the project does not contain main package"))
+			return
+		}
 		log.Error("bin", "Binary does not exist:")
 		log.Error("", "\t"+binName)
 		log.Fatal("", "\tPrevious steps weren't successful or the project does not contain main package")
@@ -139,6 +179,10 @@ func runBin(ctx *cli.Context) {
 	}
 
 	if err := os.Rename(binName, movePath+"/"+binName); err != nil {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Fail to move binary: %v", err))
+			return
+		}
 		log.Error("bin", "Fail to move binary:")
 		log.Fatal("", "\t"+err.Error())
 	}
@@ -151,8 +195,12 @@ func runBin(ctx *cli.Context) {
 			if com.IsDir(include) {
 				os.RemoveAll(path.Join(movePath, include))
 				if err := com.CopyDir(include, filepath.Join(movePath, include)); err != nil {
-					log.Error("bin", "Fail to copy following resource:")
-					log.Error("", "\t"+include)
+					if setting.LibraryMode {
+						errors.AppendError(errors.NewErrCopyResource(include))
+					} else {
+						log.Error("bin", "Fail to copy following resource:")
+						log.Error("", "\t"+include)
+					}
 				}
 			}
 		}

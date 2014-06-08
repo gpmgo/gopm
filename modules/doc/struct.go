@@ -159,18 +159,22 @@ func (n *Node) HasVcs() bool {
 	return len(GetVcsName(n.InstallGopath)) > 0
 }
 
-func (n *Node) CopyToGopath() {
+func (n *Node) CopyToGopath() error {
 	if n.HasVcs() {
 		log.Warn("Package in GOPATH has version control: %s", n.RootPath)
-		return
+		return nil
 	}
 
 	os.RemoveAll(n.InstallGopath)
 	if err := com.CopyDir(n.InstallPath, n.InstallGopath); err != nil {
+		if setting.LibraryMode {
+			return fmt.Errorf("Fail to copy to GOPATH: %v", err)
+		}
 		log.Error("", "Fail to copy to GOPATH:")
 		log.Fatal("", "\t"+err.Error())
 	}
 	log.Log("Package copied to GOPATH: %s", n.RootPath)
+	return nil
 }
 
 // If vcs has been detected, use corresponding command to update package.

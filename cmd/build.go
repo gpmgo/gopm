@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -41,15 +43,21 @@ gopm build <go build commands>`,
 	},
 }
 
-func buildBinary(ctx *cli.Context, args ...string) {
-	target, newGopath, newCurPath := genNewGopath(ctx, false)
+func buildBinary(ctx *cli.Context, args ...string) error {
+	target, newGopath, newCurPath, err := genNewGopath(ctx, false)
+	if err != nil {
+		return err
+	}
 
 	log.Trace("Building...")
 
 	cmdArgs := []string{"go", "build"}
 	cmdArgs = append(cmdArgs, args...)
 	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
-		log.Error("build", "fail to build program:")
+		if setting.LibraryMode {
+			return fmt.Errorf("Fail to build program: %v", err)
+		}
+		log.Error("build", "Fail to build program:")
 		log.Fatal("", "\t"+err.Error())
 	}
 
@@ -60,23 +68,33 @@ func buildBinary(ctx *cli.Context, args ...string) {
 		exePath := path.Join(newCurPath, doc.VENDOR, "src", target, binName)
 		if com.IsFile(exePath) {
 			if err := os.Rename(exePath, path.Join(newCurPath, binName)); err != nil {
-				log.Error("build", "fail to move binary:")
+				if setting.LibraryMode {
+					return fmt.Errorf("Fail to move binary: %v", err)
+				}
+				log.Error("build", "Fail to move binary:")
 				log.Fatal("", "\t"+err.Error())
 			}
 		} else {
 			log.Warn("No binary generated")
 		}
 	}
+	return nil
 }
 
 func runBuild(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	os.RemoveAll(doc.VENDOR)
 	if !setting.Debug {
 		defer os.RemoveAll(doc.VENDOR)
 	}
-	buildBinary(ctx, ctx.Args()...)
+	if err := buildBinary(ctx, ctx.Args()...); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	log.Success("SUCC", "build", "Command executed successfully!")
 }

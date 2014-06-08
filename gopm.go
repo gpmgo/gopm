@@ -19,42 +19,10 @@ package main
 
 import (
 	"os"
-	"runtime"
 
-	"github.com/codegangsta/cli"
-
-	"github.com/gpmgo/gopm/cmd"
+	"github.com/gpmgo/gopm/gopm"
 )
 
-const APP_VER = "0.7.0.0608 Beta"
-
-func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
-}
-
 func main() {
-	app := cli.NewApp()
-	app.Name = "Gopm"
-	app.Usage = "Go Package Manager"
-	app.Version = APP_VER
-	app.Commands = []cli.Command{
-		cmd.CmdBin,
-		cmd.CmdGen,
-		cmd.CmdGet,
-		cmd.CmdList,
-		cmd.CmdConfig,
-		cmd.CmdRun,
-		cmd.CmdTest,
-		cmd.CmdBuild,
-		cmd.CmdInstall,
-		cmd.CmdClean,
-		cmd.CmdUpdate,
-		// CmdSearch,
-	}
-	app.Flags = append(app.Flags, []cli.Flag{
-		cli.BoolFlag{"noterm, n", "disable color output"},
-		cli.BoolFlag{"strict, s", "strict mode"},
-		cli.BoolFlag{"debug, d", "debug mode"},
-	}...)
-	app.Run(os.Args)
+	gopm.Run(os.Args)
 }

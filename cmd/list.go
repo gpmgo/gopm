@@ -23,6 +23,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 )
 
 var CmdList = cli.Command{
@@ -48,8 +49,17 @@ func verSuffix(gf *goconfig.ConfigFile, name string) string {
 }
 
 func runList(ctx *cli.Context) {
-	setup(ctx)
-	gf, _, imports := genGopmfile()
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
+
+	gf, _, imports, err := genGopmfile()
+	if err != nil {
+		errors.SetError(err)
+		return
+	}
+
 	list := make([]string, 0, len(imports))
 	for _, name := range imports {
 		if !com.IsSliceContainsStr(list, name) {

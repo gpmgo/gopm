@@ -34,15 +34,17 @@ import (
 )
 
 // setup initializes and checks common environment variables.
-func setup(ctx *cli.Context) {
+func setup(ctx *cli.Context) (err error) {
 	setting.Debug = ctx.GlobalBool("debug")
 	log.PureMode = ctx.GlobalBool("noterm")
 	log.Verbose = ctx.Bool("verbose")
 
-	var err error
 	setting.HomeDir, err = com.HomeDir()
 	if err != nil {
-		log.Error("setup", "Fail to get home directory:")
+		if setting.LibraryMode {
+			return fmt.Errorf("Fail to get home directory: %v", err)
+		}
+		log.Error("setup", "")
 		log.Fatal("", "\t"+err.Error())
 	}
 	setting.HomeDir = strings.Replace(setting.HomeDir, "\\", "/", -1)
@@ -55,25 +57,38 @@ func setup(ctx *cli.Context) {
 	os.MkdirAll(setting.InstallRepoPath, os.ModePerm)
 	log.Log("Local repository path: %s", setting.InstallRepoPath)
 
-	setting.WorkDir, err = os.Getwd()
-	if err != nil {
-		log.Error("setup", "Fail to get work directory:")
-		log.Fatal("", "\t"+err.Error())
+	if !setting.LibraryMode || len(setting.WorkDir) == 0 {
+		setting.WorkDir, err = os.Getwd()
+		if err != nil {
+			if setting.LibraryMode {
+				return fmt.Errorf("Fail to get work directory: %v", err)
+			}
+			log.Error("setup", "Fail to get work directory:")
+			log.Fatal("", "\t"+err.Error())
+		}
+		setting.WorkDir = strings.Replace(setting.WorkDir, "\\", "/", -1)
 	}
-	setting.WorkDir = strings.Replace(setting.WorkDir, "\\", "/", -1)
 
 	if !ctx.Bool("remote") {
 		if ctx.Bool("local") {
-			gf, _, _ := genGopmfile()
+			gf, _, _, err := genGopmfile()
+			if err != nil {
+				return err
+			}
 			setting.InstallGopath = gf.MustValue("project", "local_gopath")
 			if ctx.Command.Name != "gen" {
 				if com.IsDir(setting.InstallGopath) {
 					log.Log("Indicated local GOPATH: %s", setting.InstallGopath)
 					setting.InstallGopath += "/src"
 				} else {
+					if setting.LibraryMode {
+						return fmt.Errorf("Local GOPATH does not exist or is not a directory: %s",
+							setting.InstallGopath)
+					}
 					log.Error("", "Invalid local GOPATH path")
 					log.Error("", "Local GOPATH does not exist or is not a directory:")
-					log.Fatal("", "\t"+setting.InstallGopath)
+					log.Error("", "\t"+setting.InstallGopath)
+					log.Help("Try 'go help gopath' to get more information")
 				}
 			}
 
@@ -85,6 +100,10 @@ func setup(ctx *cli.Context) {
 				setting.InstallGopath += "/src"
 			} else {
 				if ctx.Bool("gopath") {
+					if setting.LibraryMode {
+						return fmt.Errorf("Local GOPATH does not exist or is not a directory: %s",
+							setting.InstallGopath)
+					}
 					log.Error("", "Invalid GOPATH path")
 					log.Error("", "GOPATH does not exist or is not a directory:")
 					log.Error("", "\t"+setting.InstallGopath)
@@ -101,42 +120,58 @@ func setup(ctx *cli.Context) {
 	setting.GopmTempPath = path.Join(setting.HomeDir, ".gopm/temp")
 
 	setting.LocalNodesFile = path.Join(setting.HomeDir, ".gopm/data/localnodes.list")
-	setting.LoadLocalNodes()
+	if err = setting.LoadLocalNodes(); err != nil {
+		return err
+	}
 
 	setting.PkgNamesFile = path.Join(setting.HomeDir, ".gopm/data/pkgname.list")
-	setting.LoadPkgNameList()
+	if err = setting.LoadPkgNameList(); err != nil {
+		return err
+	}
 
 	setting.ConfigFile = path.Join(setting.HomeDir, ".gopm/data/gopm.ini")
-	setting.LoadConfig()
+	if err = setting.LoadConfig(); err != nil {
+		return err
+	}
 
 	if com.IsDir(setting.GOPMFILE) {
+		if setting.LibraryMode {
+			return fmt.Errorf("gopmfile should be file but found directory")
+		}
 		log.Error("setup", "Invalid gopmfile:")
 		log.Fatal("", "\tit should be file but found directory")
 	}
 
-	doc.SetProxy(setting.HttpProxy)
+	return doc.SetProxy(setting.HttpProxy)
 }
 
 // loadGopmfile loads and returns given gopmfile.
-func loadGopmfile(fileName string) *goconfig.ConfigFile {
+func loadGopmfile(fileName string) (*goconfig.ConfigFile, error) {
 	gf, err := goconfig.LoadConfigFile(fileName)
 	if err != nil {
+		if setting.LibraryMode {
+			return nil, fmt.Errorf("Fail to load gopmfile: %v", err)
+		}
 		log.Error("", "Fail to load gopmfile:")
 		log.Fatal("", "\t"+err.Error())
 	}
-	return gf
+	return gf, nil
 }
 
 // saveGopmfile saves gopmfile to given path.
-func saveGopmfile(gf *goconfig.ConfigFile, fileName string) {
+func saveGopmfile(gf *goconfig.ConfigFile, fileName string) error {
 	if err := goconfig.SaveConfigFile(gf, fileName); err != nil {
+		if setting.LibraryMode {
+			return fmt.Errorf("Fail to save gopmfile: %v", err)
+		}
 		log.Error("", "Fail to save gopmfile:")
 		log.Fatal("", "\t"+err.Error())
 	}
+	return nil
 }
 
 // validPkgInfo checks if the information of the package is valid.
-func validPkgInfo(info string) (doc.RevisionType, string) {
+func validPkgInfo(info string) (doc.RevisionType, string, error) {
 	infos := strings.Split(info, ":")
 	tp := doc.RevisionType(infos[0])
 	val := infos[1]
@@ -147,17 +182,23 @@ func validPkgInfo(info string) (doc.RevisionType, string) {
 		switch tp {
 		case doc.BRANCH, doc.COMMIT, doc.TAG:
 		default:
+			if setting.LibraryMode {
+				return "", "", fmt.Errorf("Invalid node type: %v", tp)
+			}
 			log.Error("", "Invalid node type:")
 			log.Error("", fmt.Sprintf("\t%v", tp))
 			log.Help("Try 'gopm help get' to get more information")
 		}
-		return tp, val
+		return tp, val, nil
 	}
 
+	if setting.LibraryMode {
+		return "", "", fmt.Errorf("Cannot parse dependency version: %v", info)
+	}
 	log.Error("", "Cannot parse dependency version:")
 	log.Error("", "\t"+info)
 	log.Help("Try 'gopm help get' to get more information")
-	return "", ""
+	return "", "", nil
 }
 
 // isSubpackage returns true if given package belongs to current project.
@@ -176,7 +217,10 @@ func getGopmPkgs(
 		deps = nil
 	}
 
-	imports := doc.GetImports(target, doc.GetRootPath(target), dirPath, isTest)
+	imports, err := doc.GetImports(target, doc.GetRootPath(target), dirPath, isTest)
+	if err != nil {
+		return nil, err
+	}
 	pkgs = make(map[string]*doc.Pkg)
 	for _, name := range imports {
 		if name == "C" {
@@ -216,7 +260,7 @@ func getDepPkgs(
 
 	pkgs, err := getGopmPkgs(gf, target, curPath, isTest)
 	if err != nil {
-		return fmt.Errorf("fail to get gopmfile dependencies: %v", err)
+		return fmt.Errorf("Fail to get gopmfile dependencies: %v", err)
 	}
 
 	if setting.Debug {
@@ -243,7 +287,9 @@ func getDepPkgs(
 				} else {
 					if !com.IsExist(newPath) || ctx.Bool("update") {
 						node := doc.NewNode(pkg.ImportPath, pkg.Type, pkg.Value, true)
-						downloadPackages(target, ctx, []*doc.Node{node})
+						if err = downloadPackages(target, ctx, []*doc.Node{node}); err != nil {
+							return err
+						}
 					}
 				}
 			} else {
@@ -270,10 +316,13 @@ func autoLink(oldPath, newPath string) error {
 	return makeLink(oldPath, newPath)
 }
 
-func genNewGopath(ctx *cli.Context, isTest bool) (string, string, string) {
+func genNewGopath(ctx *cli.Context, isTest bool) (string, string, string, error) {
 	log.Trace("Work directory: %s", setting.WorkDir)
 
-	gf, target, _ := genGopmfile()
+	gf, target, _, err := genGopmfile()
+	if err != nil {
+		return "", "", "", err
+	}
 	if target == "." {
 		_, target = filepath.Split(setting.WorkDir)
 	}
@@ -281,6 +330,9 @@ func genNewGopath(ctx *cli.Context, isTest bool) (string, string, string) {
 	// Check and loads dependency pakcages.
 	depPkgs := make(map[string]*doc.Pkg)
 	if err := getDepPkgs(gf, ctx, target, setting.WorkDir, depPkgs, isTest); err != nil {
+		if setting.LibraryMode {
+			return "", "", "", fmt.Errorf("Fail to get dependency pakcages: %v", err)
+		}
 		log.Error("", "Fail to get dependency pakcages:")
 		log.Fatal("", "\t"+err.Error())
 	}
@@ -326,6 +378,9 @@ func genNewGopath(ctx *cli.Context, isTest bool) (string, string, string) {
 
 			log.Log("Linking %s", name+pkg.ValSuffix())
 			if err := autoLink(oldPath, newPath); err != nil {
+				if setting.LibraryMode {
+					return "", "", "", fmt.Errorf("Fail to make link dependency: %v", err)
+				}
 				log.Error("", "Fail to make link dependency:")
 				log.Fatal("", "\t"+err.Error())
 			}
@@ -344,10 +399,13 @@ func genNewGopath(ctx *cli.Context, isTest bool) (string, string, string) {
 		strings.TrimSuffix(setting.WorkDir, target), targetRoot),
 		path.Join(newGopathSrc, targetRoot)); err != nil &&
 		!strings.Contains(err.Error(), "file exists") {
+		if setting.LibraryMode {
+			return "", "", "", fmt.Errorf("Fail to make link self: %v", err)
+		}
 		log.Error("", "Fail to make link self:")
 		log.Fatal("", "\t"+err.Error())
 	}
-	return target, newGopath, newCurPath
+	return target, newGopath, newCurPath, nil
 }
 
 func execCmd(gopath, curPath string, args ...string) error {
@@ -360,6 +418,9 @@ func execCmd(gopath, curPath string, args ...string) error {
 	}
 
 	if err := os.Setenv("GOPATH", gopath+sep+oldGopath); err != nil {
+		if setting.LibraryMode {
+			return fmt.Errorf("Fail to setting GOPATH: %v", err)
+		}
 		log.Error("", "Fail to setting GOPATH:")
 		log.Fatal("", "\t"+err.Error())
 	}

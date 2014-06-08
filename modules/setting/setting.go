@@ -15,6 +15,7 @@
 package setting
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -30,8 +31,14 @@ const (
 	GOPMFILE = ".gopmfile"
 	VERINFO  = "data/VERSION.json"
 
-	VERSION = 2014052701
+	VERSION = 201406081
 )
+
+type Error struct {
+	HasError bool
+	Fatal    error
+	Errors   []error
+}
 
 var (
 	Debug bool
@@ -55,6 +62,8 @@ var (
 	IsWindows   bool
 	IsWindowsXP bool
 
+	LibraryMode   bool
+	RuntimeError  = new(Error)
 	RootPathPairs = map[string]int{
 		"github.com":      3,
 		"code.google.com": 3,
@@ -67,34 +76,44 @@ var (
 	CommonRes = []string{"views", "templates", "static", "public", "conf"}
 )
 
-func LoadLocalNodes() {
+func LoadLocalNodes() (err error) {
 	if !com.IsFile(LocalNodesFile) {
 		os.MkdirAll(path.Dir(LocalNodesFile), os.ModePerm)
 		os.Create(LocalNodesFile)
 	}
 
-	var err error
 	LocalNodes, err = goconfig.LoadConfigFile(LocalNodesFile)
 	if err != nil {
-		log.Error("", "Fail to load localnodes.list")
+		if LibraryMode {
+			return fmt.Errorf("Fail to load localnodes.list: %v", err)
+		}
+		log.Error("", "Fail to load localnodes.list:")
 		log.Fatal("", "\t"+err.Error())
 	}
+	return nil
 }
 
-func SaveLocalNodes() {
+func SaveLocalNodes() error {
 	if err := goconfig.SaveConfigFile(LocalNodes, LocalNodesFile); err != nil {
+		if LibraryMode {
+			return fmt.Errorf("Fail to save localnodes.list: %v", err)
+		}
 		log.Error("", "Fail to save localnodes.list:")
 		log.Error("", "\t"+err.Error())
 	}
+	return nil
 }
 
-func LoadPkgNameList() {
+func LoadPkgNameList() error {
 	if !com.IsFile(PkgNamesFile) {
-		return
+		return nil
 	}
 
 	data, err := ioutil.ReadFile(PkgNamesFile)
 	if err != nil {
+		if LibraryMode {
+			return fmt.Errorf("Fail to load pkgname.list: %v", err)
+		}
 		log.Error("", "Fail to load pkgname.list:")
 		log.Fatal("", "\t"+err.Error())
 	}
@@ -107,11 +126,15 @@ func LoadPkgNameList() {
 			if i == len(pkgs)-1 {
 				continue
 			}
+			if LibraryMode {
+				return fmt.Errorf("Fail to parse package name: %v", line)
+			}
 			log.Error("", "Fail to parse package name: "+line)
 			log.Fatal("", "Invalid package information")
 		}
 		PackageNameList[strings.TrimSpace(infos[0])] = strings.TrimSpace(infos[1])
 	}
+	return nil
 }
 
 func GetPkgFullPath(short string) string {
@@ -128,22 +151,29 @@ var (
 	HttpProxy string
 )
 
-func LoadConfig() {
+func LoadConfig() error {
 	var err error
 	if !com.IsExist(ConfigFile) {
 		os.MkdirAll(path.Dir(ConfigFile), os.ModePerm)
 		if _, err = os.Create(ConfigFile); err != nil {
-			log.Error("", "Fail to create gopm config file")
+			if LibraryMode {
+				return fmt.Errorf("Fail to create gopm config file: %v", err)
+			}
+			log.Error("", "Fail to create gopm config file:")
 			log.Fatal("", "\t"+err.Error())
 		}
 	}
 	Cfg, err = goconfig.LoadConfigFile(ConfigFile)
 	if err != nil {
+		if LibraryMode {
+			return fmt.Errorf("Fail to load gopm config file: %v", err)
+		}
 		log.Error("", "Fail to load gopm config file")
 		log.Fatal("", "\t"+err.Error())
 	}
 
 	HttpProxy = Cfg.MustValue("settings", "HTTP_PROXY")
+	return nil
 }
 
 func SetConfigValue(section, key, val string) {

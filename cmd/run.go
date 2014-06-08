@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -44,7 +46,10 @@ you need to run the command right at the local_gopath dir.`,
 }
 
 func runRun(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	// TODO: So ugly, need to fix.
 	if ctx.Bool("local") {
@@ -92,13 +97,21 @@ func runRun(ctx *cli.Context) {
 	}
 	// Run command with gopm repos context
 	// need version control , auto link to GOPATH/src repos
-	_, newGopath, newCurPath := genNewGopath(ctx, false)
+	_, newGopath, newCurPath, err := genNewGopath(ctx, false)
+	if err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	log.Trace("Running...")
 
 	cmdArgs := []string{"go", "run"}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
 	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Fail to run program: %v", err))
+			return
+		}
 		log.Error("run", "Fail to run program:")
 		log.Fatal("", "\t"+err.Error())
 	}

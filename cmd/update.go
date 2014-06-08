@@ -25,6 +25,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -71,6 +72,10 @@ func loadLocalVerInfo() (ver version) {
 }
 
 func runUpdate(ctx *cli.Context) {
+	if setting.LibraryMode {
+		errors.SetError(fmt.Errorf("Library mode does not support update command"))
+		return
+	}
 	setup(ctx)
 
 	isAnythingUpdated := false

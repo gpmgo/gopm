@@ -25,6 +25,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -45,14 +46,26 @@ Make sure you run this command in the root path of a go project.`,
 }
 
 func runGen(ctx *cli.Context) {
-	setup(ctx)
-	gf, _, _ := genGopmfile()
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
+
+	gf, _, _, err := genGopmfile()
+	if err != nil {
+		errors.SetError(err)
+		return
+	}
+
 	if ctx.Bool("local") {
 		localGopath := gf.MustValue("project", "local_gopath")
 		if len(localGopath) == 0 {
 			localGopath = "./vendor"
 			gf.SetValue("project", "local_gopath", localGopath)
-			saveGopmfile(gf, setting.GOPMFILE)
+			if err = saveGopmfile(gf, setting.GOPMFILE); err != nil {
+				errors.SetError(err)
+				return
+			}
 		}
 
 		for _, name := range []string{"src", "pkg", "bin"} {
@@ -64,15 +77,21 @@ func runGen(ctx *cli.Context) {
 
 // genGopmfile generates gopmfile and returns it,
 // along with target and dependencies.
-func genGopmfile() (*goconfig.ConfigFile, string, []string) {
+func genGopmfile() (*goconfig.ConfigFile, string, []string, error) {
 	if !com.IsExist(setting.GOPMFILE) {
 		os.Create(setting.GOPMFILE)
 	}
-	gf := loadGopmfile(setting.GOPMFILE)
+	gf, err := loadGopmfile(setting.GOPMFILE)
+	if err != nil {
+		return nil, "", nil, err
+	}
 
 	// Check dependencies.
 	target := doc.ParseTarget(gf.MustValue("target", "path"))
-	imports := doc.GetImports(target, doc.GetRootPath(target), setting.WorkDir, false)
+	imports, err := doc.GetImports(target, doc.GetRootPath(target), setting.WorkDir, false)
+	if err != nil {
+		return nil, "", nil, err
+	}
 	sort.Strings(imports)
 	for _, name := range imports {
 		name = doc.GetRootPath(name)
@@ -92,6 +111,6 @@ func genGopmfile() (*goconfig.ConfigFile, string, []string) {
 		}
 		gf.SetValue("res", "include", strings.Join(resList, "|"))
 	}
-	saveGopmfile(gf, setting.GOPMFILE)
-	return gf, target, imports
+
+	return gf, target, imports, saveGopmfile(gf, setting.GOPMFILE)
 }

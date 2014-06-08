@@ -16,12 +16,14 @@ package doc
 
 import (
 	"flag"
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var (
@@ -47,17 +49,21 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, err
 }
 
-func (t *transport) SetProxy(proxy string) {
+func (t *transport) SetProxy(proxy string) error {
 	if len(proxy) == 0 {
-		return
+		return nil
 	}
 
 	proxyUrl, err := url.Parse(proxy)
 	if err != nil {
+		if setting.LibraryMode {
+			return fmt.Errorf("Fail to set HTTP proxy: %v", err)
+		}
 		log.Error("", "Fail to set HTTP proxy:")
 		log.Fatal("", "\t"+err.Error())
 	}
 	t.t.Proxy = http.ProxyURL(proxyUrl)
+	return nil
 }
 
 var (
@@ -70,6 +76,6 @@ var (
 	HttpClient = &http.Client{Transport: httpTransport}
 )
 
-func SetProxy(proxy string) {
-	httpTransport.SetProxy(proxy)
+func SetProxy(proxy string) error {
+	return httpTransport.SetProxy(proxy)
 }

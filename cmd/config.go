@@ -19,6 +19,7 @@ import (
 
 	"github.com/codegangsta/cli"
 
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -90,8 +91,16 @@ func showSettingString(section, key string) {
 }
 
 func runConfigGet(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
+
 	if len(ctx.Args()) != 1 {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+			return
+		}
 		log.Error("config", "Incorrect number of arguments for command")
 		log.Error("", "\t'get' should have 1")
 		log.Help("Try 'gopm config get -h' to get more information")
@@ -108,8 +117,17 @@ func runConfigGet(ctx *cli.Context) {
 }
 
 func runConfigUnset(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		setting.RuntimeError.HasError = true
+		setting.RuntimeError.Fatal = err
+		return
+	}
+
 	if len(ctx.Args()) != 1 {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+			return
+		}
 		log.Error("config", "Incorrect number of arguments for command")
 		log.Error("", "\t'unset' should have 1")
 		log.Help("Try 'gopm config unset -h' to get more information")
@@ -124,8 +142,16 @@ func runConfigUnset(ctx *cli.Context) {
 }
 
 func runConfigSetProxy(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
+
 	if len(ctx.Args()) != 1 {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+			return
+		}
 		log.Error("config", "Incorrect number of arguments for command")
 		log.Error("", "\t'set proxy' should have 1")
 		log.Help("Try 'gopm config set help proxy' to get more information")
@@ -134,8 +160,16 @@ func runConfigSetProxy(ctx *cli.Context) {
 }
 
 func runConfigSetGitHub(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
+
 	if len(ctx.Args()) != 2 {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 2"))
+			return
+		}
 		log.Error("config", "Incorrect number of arguments for command")
 		log.Error("", "\t'set github' should have 2")
 		log.Help("Try 'gopm config set help github' to get more information")

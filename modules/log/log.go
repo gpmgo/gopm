@@ -19,10 +19,13 @@ package log
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/aybabtme/color/brush"
 )
+
+var Output io.Writer = os.Stdout
 
 func Error(hl, msg string) {
 	if PureMode {
@@ -32,7 +35,7 @@ func Error(hl, msg string) {
 	if len(hl) > 0 {
 		hl = " " + brush.Red(hl).String()
 	}
-	fmt.Printf("gopm %s%s %s\n", brush.Red("ERR!"), hl, msg)
+	fmt.Fprintf(Output, "gopm %s%s %s\n", brush.Red("ERR!"), hl, msg)
 }
 
 func Fatal(hl, msg string) {
@@ -50,7 +53,7 @@ func Warn(format string, args ...interface{}) {
 		return
 	}
 
-	fmt.Printf("gopm %s %s\n", brush.Purple("WARN"),
+	fmt.Fprintf(Output, "gopm %s %s\n", brush.Purple("WARN"),
 		fmt.Sprintf(format, args...))
 }
 
@@ -63,7 +66,7 @@ func Log(format string, args ...interface{}) {
 	if !Verbose {
 		return
 	}
-	fmt.Printf("gopm %s %s\n", brush.White("INFO"),
+	fmt.Fprintf(Output, "gopm %s %s\n", brush.White("INFO"),
 		fmt.Sprintf(format, args...))
 }
 
@@ -76,7 +79,7 @@ func Trace(format string, args ...interface{}) {
 	if !Verbose {
 		return
 	}
-	fmt.Printf("gopm %s %s\n", brush.Blue("TRAC"),
+	fmt.Fprintf(Output, "gopm %s %s\n", brush.Blue("TRAC"),
 		fmt.Sprintf(format, args...))
 }
 
@@ -92,7 +95,7 @@ func Success(title, hl, msg string) {
 	if len(hl) > 0 {
 		hl = " " + brush.Green(hl).String()
 	}
-	fmt.Printf("gopm %s%s %s\n", brush.Green(title), hl, msg)
+	fmt.Fprintf(Output, "gopm %s%s %s\n", brush.Green(title), hl, msg)
 }
 
 func Message(hl, msg string) {
@@ -107,7 +110,7 @@ func Message(hl, msg string) {
 	if len(hl) > 0 {
 		hl = " " + brush.Yellow(hl).String()
 	}
-	fmt.Printf("gopm %s%s %s\n", brush.Yellow("MSG!"), hl, msg)
+	fmt.Fprintf(Output, "gopm %s%s %s\n", brush.Yellow("MSG!"), hl, msg)
 }
 
 func Help(format string, args ...interface{}) {
@@ -115,7 +118,7 @@ func Help(format string, args ...interface{}) {
 		help(format, args...)
 	}
 
-	fmt.Printf("gopm %s %s\n", brush.Cyan("HELP"),
+	fmt.Fprintf(Output, "gopm %s %s\n", brush.Cyan("HELP"),
 		fmt.Sprintf(format, args...))
 	os.Exit(2)
 }

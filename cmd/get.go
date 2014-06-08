@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -66,7 +68,7 @@ var (
 )
 
 // downloadPackage downloads package either use version control tools or not.
-func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string) {
+func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error) {
 	log.Message("", "Downloading package: "+n.VerString())
 	downloadCache[n.RootPath] = true
 
@@ -78,11 +80,19 @@ func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string) {
 	// then use VCS tools to update the package.
 	if ctx.Bool("update") && (ctx.Bool("gopath") || ctx.Bool("local")) && len(vcs) > 0 {
 		err = n.UpdateByVcs(vcs)
-		imports = doc.GetImports(n.ImportPath, n.RootPath, n.InstallGopath, false)
+
+		var errFatal error
+		imports, errFatal = doc.GetImports(n.ImportPath, n.RootPath, n.InstallGopath, false)
+		if errFatal != nil {
+			return nil, nil, errFatal
+		}
 	} else {
 		// IsGetDepsOnly promises package is fixed version and exists in local repository.
 		if n.IsGetDepsOnly {
-			imports = doc.GetImports(n.ImportPath, n.RootPath, n.InstallPath, false)
+			imports, err = doc.GetImports(n.ImportPath, n.RootPath, n.InstallPath, false)
+			if err != nil {
+				return nil, nil, err
+			}
 		} else {
 			// Get revision value from local records.
 			if n.IsExist() {
@@ -93,29 +103,35 @@ func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string) {
 	}
 
 	if err != nil {
+		if setting.LibraryMode {
+			errors.AppendError(errors.NewErrDownload(n.ImportPath + "\n" + err.Error()))
+		}
 		log.Error("get", "Fail to download pakage: "+n.ImportPath)
 		log.Error("", "\t"+err.Error())
 		failConut++
 		os.RemoveAll(n.InstallPath)
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	if !n.IsGetDeps {
 		imports = nil
 	}
-	return n, imports
+	return n, imports, nil
 }
 
 // downloadPackages downloads packages with certain commit,
 // if the commit is empty string, then it downloads all dependencies,
 // otherwise, it only downloada package with specific commit only.
-func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
+func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err error) {
 	for _, n := range nodes {
 		// Check if it is a valid remote path or C.
 		if n.ImportPath == "C" {
 			continue
 		} else if !doc.IsValidRemotePath(n.ImportPath) {
 			// Invalid import path.
+			if setting.LibraryMode {
+				errors.AppendError(errors.NewErrInvalidPackage(n.VerString()))
+			}
 			log.Error("download", "Skipped invalid package: "+n.VerString())
 			failConut++
 			continue
@@ -151,7 +167,9 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 				// Only copy when no version control.
 				if !copyCache[n.RootPath] && (ctx.Bool("gopath") || ctx.Bool("local")) {
 					copyCache[n.RootPath] = true
-					n.CopyToGopath()
+					if err = n.CopyToGopath(); err != nil {
+						return err
+					}
 				}
 				continue
 			} else {
@@ -159,7 +177,10 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 			}
 		}
 		// Download package.
-		nod, imports := downloadPackage(ctx, n)
+		nod, imports, err := downloadPackage(ctx, n)
+		if err != nil {
+			return err
+		}
 		for _, name := range imports {
 			var gf *goconfig.ConfigFile
 			gfPath := path.Join(n.InstallPath, setting.GOPMFILE)
@@ -167,7 +188,11 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 			// Check if has gopmfile.
 			if com.IsFile(gfPath) {
 				log.Log("Found gopmfile: %s", n.VerString())
-				gf = loadGopmfile(gfPath)
+				var err error
+				gf, err = loadGopmfile(gfPath)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Need to download dependencies.
@@ -182,10 +207,15 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 
 				// Check if user specified the version.
 				if v := gf.MustValue("deps", imports[i]); len(v) > 0 {
-					nodes[i].Type, nodes[i].Value = validPkgInfo(v)
+					nodes[i].Type, nodes[i].Value, err = validPkgInfo(v)
+					if err != nil {
+						return err
+					}
 				}
 			}
-			downloadPackages(target, ctx, nodes)
+			if err = downloadPackages(target, ctx, nodes); err != nil {
+				return err
+			}
 		}
 
 		// Only save package information with specific commit.
@@ -206,24 +236,35 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
 		// else just download to local repository and copy to GOPATH.
 		if !nod.HasVcs() && !copyCache[n.RootPath] && (ctx.Bool("gopath") || ctx.Bool("local")) {
 			copyCache[n.RootPath] = true
-			nod.CopyToGopath()
+			if err = nod.CopyToGopath(); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func getPackages(target string, ctx *cli.Context, nodes []*doc.Node) {
-	downloadPackages(target, ctx, nodes)
-	setting.SaveLocalNodes()
+func getPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err error) {
+	if err = downloadPackages(target, ctx, nodes); err != nil {
+		return err
+	}
+	if err = setting.SaveLocalNodes(); err != nil {
+		return err
+	}
 
 	log.Log("%d package(s) downloaded, %d failed", downloadCount, failConut)
-	if ctx.GlobalBool("strict") && failConut > 0 {
+	if ctx.GlobalBool("strict") && failConut > 0 && !setting.LibraryMode {
 		os.Exit(2)
 	}
+	return nil
 }
 
-func getByGopmfile(ctx *cli.Context) {
+func getByGopmfile(ctx *cli.Context) error {
 	// Make sure gopmfile exists and up-to-date.
-	gf, target, imports := genGopmfile()
+	gf, target, imports, err := genGopmfile()
+	if err != nil {
+		return err
+	}
 
 	// Check if dependency has version.
 	nodes := make([]*doc.Node, 0, len(imports))
@@ -233,15 +274,16 @@ func getByGopmfile(ctx *cli.Context) {
 
 		// Check if user specified the version.
 		if v := gf.MustValue("deps", name); len(v) > 0 {
-			n.Type, n.Value = validPkgInfo(v)
+			n.Type, n.Value, err = validPkgInfo(v)
 			n = doc.NewNode(name, n.Type, n.Value, !ctx.Bool("download"))
 		}
 		nodes = append(nodes, n)
 	}
-	getPackages(target, ctx, nodes)
+
+	return getPackages(target, ctx, nodes)
 }
 
-func getByPaths(ctx *cli.Context) {
+func getByPaths(ctx *cli.Context) error {
 	nodes := make([]*doc.Node, 0, len(ctx.Args()))
 	for _, info := range ctx.Args() {
 		pkgPath := info
@@ -249,7 +291,10 @@ func getByPaths(ctx *cli.Context) {
 
 		if i := strings.Index(info, "@"); i > -1 {
 			pkgPath = info[:i]
-			tp, val := validPkgInfo(info[i+1:])
+			tp, val, err := validPkgInfo(info[i+1:])
+			if err != nil {
+				return err
+			}
 			n = doc.NewNode(pkgPath, tp, val, !ctx.Bool("download"))
 		}
 
@@ -262,11 +307,14 @@ func getByPaths(ctx *cli.Context) {
 		}
 		nodes = append(nodes, n)
 	}
-	getPackages(".", ctx, nodes)
+	return getPackages(".", ctx, nodes)
 }
 
 func runGet(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	// Check option conflicts.
 	hasConflict := false
@@ -283,21 +331,33 @@ func runGet(ctx *cli.Context) {
 		names = "'--gopath, -g' and '--remote, -r'"
 	}
 	if hasConflict {
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Command options have conflicts: %s", names))
+			return
+		}
 		log.Error("get", "Command options have conflicts")
 		log.Error("", "Following options are not supposed to use at same time:")
 		log.Error("", "\t"+names)
 		log.Help("Try 'gopm help get' to get more information")
 	}
 
+	var err error
 	// Check number of arguments to decide which function to call.
 	if len(ctx.Args()) == 0 {
 		if ctx.Bool("download") {
+			if setting.LibraryMode {
+				errors.SetError(fmt.Errorf("Not enough arguments for option: '--download, -d'"))
+				return
+			}
 			log.Error("get", "Not enough arguments for option:")
 			log.Error("", "\t'--download, -d'")
 			log.Help("Try 'gopm help get' to get more information")
 		}
-		getByGopmfile(ctx)
+		err = getByGopmfile(ctx)
 	} else {
-		getByPaths(ctx)
+		err = getByPaths(ctx)
+	}
+	if err != nil {
+		errors.SetError(err)
 	}
 }

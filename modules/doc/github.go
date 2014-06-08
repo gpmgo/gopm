@@ -137,5 +137,5 @@ func getGithubDoc(
 	if !n.IsGetDeps {
 		return nil, nil
 	}
-	return GetImports(n.ImportPath, n.RootPath, n.InstallPath, false), nil
+	return GetImports(n.ImportPath, n.RootPath, n.InstallPath, false)
 }

@@ -15,11 +15,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -42,14 +44,26 @@ If no argument is supplied, then gopmfile must be present`,
 }
 
 func runInstall(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
+	var err error
 	var target, srcPath string
 	switch len(ctx.Args()) {
 	case 0:
-		_, target, _ = genGopmfile()
+		_, target, _, err = genGopmfile()
+		if err != nil {
+			errors.SetError(err)
+			return
+		}
 		srcPath = setting.WorkDir
 	default:
+		if setting.LibraryMode {
+			errors.SetError(fmt.Errorf("Too many arguments: no argument needed"))
+			return
+		}
 		log.Error("install", "Too many arguments:")
 		log.Error("", "\tno argument needed")
 		log.Help("Try 'gopm help install' to get more information")
@@ -57,13 +71,22 @@ func runInstall(ctx *cli.Context) {
 
 	os.RemoveAll(doc.VENDOR)
 
-	_, newGopath, newCurPath := genNewGopath(ctx, false)
+	_, newGopath, newCurPath, err := genNewGopath(ctx, false)
+	if err != nil {
+		setting.RuntimeError.HasError = true
+		setting.RuntimeError.Fatal = err
+		return
+	}
 
 	log.Trace("Installing...")
 
 	var installRepos []string
 	if ctx.Bool("package") {
-		installRepos = doc.GetImports(target, doc.GetRootPath(target), srcPath, false)
+		installRepos, err = doc.GetImports(target, doc.GetRootPath(target), srcPath, false)
+		if err != nil {
+			errors.SetError(err)
+			return
+		}
 	} else {
 		installRepos = []string{target}
 	}
@@ -76,6 +99,10 @@ func runInstall(ctx *cli.Context) {
 		}
 		cmdArgs = append(cmdArgs, repo)
 		if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
+			if setting.LibraryMode {
+				errors.SetError(fmt.Errorf("Fail to install program: %v", err))
+				return
+			}
 			log.Error("install", "Fail to install program:")
 			log.Fatal("", "\t"+err.Error())
 		}

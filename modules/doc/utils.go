@@ -15,7 +15,7 @@
 package doc
 
 import (
-	// "fmt"
+	"fmt"
 	"go/build"
 	"os"
 	"path"
@@ -90,7 +90,7 @@ func IsGoRepoPath(name string) bool {
 }
 
 // GetImports returns package denpendencies.
-func GetImports(importPath, rootPath, srcPath string, isTest bool) []string {
+func GetImports(importPath, rootPath, srcPath string, isTest bool) ([]string, error) {
 	tmpGopath := setting.InstallRepoPath
 	if setting.IsWindows {
 		// Windows's local repository path has "/src" suffix.
@@ -115,6 +115,9 @@ func GetImports(importPath, rootPath, srcPath string, isTest bool) []string {
 	pkg, err := ctxt.Import(importPath, srcPath, build.AllowBinary)
 	if err != nil {
 		if _, ok := err.(*build.NoGoError); !ok {
+			if setting.LibraryMode {
+				return nil, fmt.Errorf("Fail to get imports: %v", err)
+			}
 			log.Error("", "Fail to get imports")
 			log.Fatal("", err.Error())
 		}
@@ -136,12 +139,16 @@ func GetImports(importPath, rootPath, srcPath string, isTest bool) []string {
 				log.Error("", "Fail to get relative path of import")
 				log.Fatal("", err.Error())
 			}
-			imports = append(imports, GetImports(name, rootPath, "./"+relPath, isTest)...)
+			moreImports, err := GetImports(name, rootPath, "./"+relPath, isTest)
+			if err != nil {
+				return nil, err
+			}
+			imports = append(imports, moreImports...)
 			continue
 		}
 		imports = append(imports, name)
 	}
-	return imports
+	return imports, nil
 }
 
 var validTLD = map[string]bool{

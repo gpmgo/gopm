@@ -21,6 +21,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/setting"
 )
 
@@ -37,7 +38,10 @@ gopm clean`,
 }
 
 func runClean(ctx *cli.Context) {
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	os.RemoveAll(doc.VENDOR)
 	os.RemoveAll(path.Join(setting.HomeDir, ".gopm/temp"))
