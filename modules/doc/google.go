@@ -188,21 +188,18 @@ func getGoogleDoc(
 	p, err := com.HttpGetBytes(client,
 		com.Expand("http://{subrepo}{dot}{repo}.googlecode.com/{vcs}{dir}/?r={tag}", match), nil)
 	if err != nil {
-		log.Warn("GET", "Fail to fetch revision page")
-		log.Fatal("", "\t"+err.Error())
-	}
-
-	if m := googleRevisionRe.FindSubmatch(p); m == nil {
-		log.Warn("GET", "Fail to get revision")
-		log.Fatal("", "\t"+err.Error())
+		log.Warn("Fail to fetch revision page: %v", err)
 	} else {
-		etag := string(m[1])
-		if n.Type == BRANCH && etag == n.Revision {
-			log.Log("GET Package hasn't changed: %s", n.ImportPath)
-			return nil, nil
+		if m := googleRevisionRe.FindSubmatch(p); m == nil {
+			log.Warn("Fail to get revision: %v", err)
+		} else {
+			etag := string(m[1])
+			if n.Type == BRANCH && etag == n.Revision {
+				log.Log("GET Package hasn't changed: %s", n.ImportPath)
+				return nil, nil
+			}
+			n.Revision = etag
 		}
-		n.Revision = etag
-		match["etag"] = n.Revision
 	}
 
 	// Remove old files.

@@ -89,19 +89,20 @@ func runBin(ctx *cli.Context) {
 		log.Fatal("", "\tDownload steps weren't successful")
 	}
 
+	buildPath := path.Join(setting.InstallRepoPath, n.ImportPath)
 	oldWorkDir := setting.WorkDir
 	// Change to repository path.
-	log.Log("Changing work directory to %s", n.InstallPath)
-	if err := os.Chdir(n.InstallPath); err != nil {
+	log.Log("Changing work directory to %s", buildPath)
+	if err := os.Chdir(buildPath); err != nil {
 		log.Error("bin", "Fail to change work directory:")
 		log.Fatal("", "\t"+err.Error())
 	}
-	setting.WorkDir = n.InstallPath
+	setting.WorkDir = buildPath
 
 	// TODO: should use .gopm/temp path.
-	os.RemoveAll(path.Join(n.InstallPath, doc.VENDOR))
+	os.RemoveAll(path.Join(buildPath, doc.VENDOR))
 	if !setting.Debug {
-		defer os.RemoveAll(path.Join(n.InstallPath, doc.VENDOR))
+		defer os.RemoveAll(path.Join(buildPath, doc.VENDOR))
 	}
 
 	buildBinary(ctx)
@@ -126,6 +127,8 @@ func runBin(ctx *cli.Context) {
 	movePath := oldWorkDir
 	if ctx.IsSet("dir") {
 		movePath = ctx.String("dir")
+	} else if strings.HasPrefix(n.ImportPath, "code.google.com/p/go.tools/cmd/") {
+		movePath = path.Join(runtime.GOROOT(), "pkg/tool", runtime.GOOS+"_"+runtime.GOARCH)
 	}
 
 	if com.IsExist(movePath + "/" + binName) {
