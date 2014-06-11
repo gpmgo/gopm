@@ -19,6 +19,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/Unknwon/com"
 	"github.com/Unknwon/goconfig"
@@ -57,12 +58,35 @@ then all the packages go into gopm local repository.`,
 	},
 }
 
+type safeMap struct {
+	locker *sync.RWMutex
+	data   map[string]bool
+}
+
+func (s *safeMap) Set(name string) {
+	s.locker.Lock()
+	defer s.locker.Unlock()
+	s.data[name] = true
+}
+
+func (s *safeMap) Get(name string) bool {
+	s.locker.RLock()
+	defer s.locker.RUnlock()
+	return s.data[name]
+}
+
+func NewSafeMap() *safeMap {
+	return &safeMap{
+		locker: &sync.RWMutex{},
+		data:   make(map[string]bool),
+	}
+}
+
 var (
 	// Saves packages that have been downloaded.
-	// NOTE: need a safe map for future downloading packages concurrency.
-	downloadCache = make(map[string]bool)
-	skipCache     = make(map[string]bool)
-	copyCache     = make(map[string]bool)
+	downloadCache = NewSafeMap()
+	skipCache     = NewSafeMap()
+	copyCache     = NewSafeMap()
 	downloadCount int
 	failConut     int
 )
@@ -70,7 +94,7 @@ var (
 // downloadPackage downloads package either use version control tools or not.
 func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error) {
 	log.Message("", "Downloading package: "+n.VerString())
-	downloadCache[n.RootPath] = true
+	downloadCache.Set(n.RootPath)
 
 	var imports []string
 	var err error
@@ -147,9 +171,9 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 			n.IsGetDepsOnly = true
 		}
 
-		if downloadCache[n.RootPath] {
-			if !skipCache[n.RootPath] {
-				skipCache[n.RootPath] = true
+		if downloadCache.Get(n.RootPath) {
+			if !skipCache.Get(n.RootPath) {
+				skipCache.Set(n.RootPath)
 				log.Trace("Skipped downloaded package: %s", n.VerString())
 			}
 			continue
@@ -158,15 +182,15 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 		if !ctx.Bool("update") {
 			// Check if package has been downloaded.
 			if n.IsExist() {
-				if !skipCache[n.RootPath] {
-					skipCache[n.RootPath] = true
+				if !skipCache.Get(n.RootPath) {
+					skipCache.Set(n.RootPath)
 					log.Log("%s", n.InstallPath)
 					log.Trace("Skipped installed package: %s", n.VerString())
 				}
 
 				// Only copy when no version control.
-				if !copyCache[n.RootPath] && (ctx.Bool("gopath") || ctx.Bool("local")) {
-					copyCache[n.RootPath] = true
+				if !copyCache.Get(n.RootPath) && (ctx.Bool("gopath") || ctx.Bool("local")) {
+					copyCache.Set(n.RootPath)
 					if err = n.CopyToGopath(); err != nil {
 						return err
 					}
@@ -234,8 +258,8 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 
 		// If update set downloadPackage will use VSC tools to download the package,
 		// else just download to local repository and copy to GOPATH.
-		if !nod.HasVcs() && !copyCache[n.RootPath] && (ctx.Bool("gopath") || ctx.Bool("local")) {
-			copyCache[n.RootPath] = true
+		if !nod.HasVcs() && !copyCache.Get(n.RootPath) && (ctx.Bool("gopath") || ctx.Bool("local")) {
+			copyCache.Set(n.RootPath)
 			if err = nod.CopyToGopath(); err != nil {
 				return err
 			}

@@ -61,8 +61,7 @@ func getBitbucketDoc(
 			Node string
 		}
 		if err := com.HttpGetJSON(client, com.Expand("https://api.bitbucket.org/1.0/repositories/{owner}/{repo}/{0}", match, nodeType), &nodes); err != nil {
-			log.Warn("GET", "Fail to fetch revision page")
-			log.Fatal("", "\t"+err.Error())
+			return nil, fmt.Errorf("fail to fetch revision page: %v", err)
 		}
 		for t, n := range nodes {
 			tags[t] = n.Node

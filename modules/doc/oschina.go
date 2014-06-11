@@ -57,13 +57,11 @@ func getOscDoc(
 		p, err := com.HttpGetBytes(client,
 			com.Expand("http://git.oschina.net/{owner}/{repo}/tree/{sha}", match), nil)
 		if err != nil {
-			log.Warn("GET", "Fail to fetch revision page")
-			log.Fatal("", "\t"+err.Error())
+			return nil, fmt.Errorf("fail to fetch revision page: %v", err)
 		}
 
 		if m := oscRevisionRe.FindSubmatch(p); m == nil {
-			log.Warn("GET", "Fail to get revision")
-			log.Fatal("", "\t"+err.Error())
+			return nil, fmt.Errorf("fail to get revision: %v", err)
 		} else {
 			etag := strings.TrimPrefix(string(m[0]), `<span class='sha'>`)
 			if etag == n.Revision {

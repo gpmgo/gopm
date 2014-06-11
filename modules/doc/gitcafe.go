@@ -24,14 +24,11 @@ import (
 	"path"
 	"regexp"
 	"strings"
-	// "time"
 
-	// "github.com/Unknwon/cae/tz"
 	"github.com/Unknwon/com"
 	"github.com/codegangsta/cli"
 
 	"github.com/gpmgo/gopm/modules/log"
-	// "github.com/gpmgo/gopm/modules/setting"
 )
 
 var (
@@ -59,13 +56,11 @@ func getGitcafeDoc(
 		p, err := com.HttpGetBytes(client,
 			com.Expand("http://gitcafe.com/{owner}/{repo}/tree/{sha}", match), nil)
 		if err != nil {
-			log.Warn("GET", "Fail to fetch revision page")
-			log.Fatal("", "\t"+err.Error())
+			return nil, fmt.Errorf("fail to fetch revision page: %v", err)
 		}
 
 		if m := gitcafeRevisionRe.FindSubmatch(p); m == nil {
-			log.Warn("GET", "Fail to get revision")
-			log.Fatal("", "\t"+err.Error())
+			return nil, fmt.Errorf("fail to get revision: %v", err)
 		} else {
 			etag := strings.TrimPrefix(string(m[0]), `<i class="icon-push"></i>`)
 			if etag == n.Revision {
