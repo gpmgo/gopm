@@ -32,10 +32,11 @@ const APP_VER = "0.7.1.0613 Beta"
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	setting.LibraryMode = true
 }
 
 func Run(args []string) *setting.Error {
+	setting.LibraryMode = true
+
 	app := cli.NewApp()
 	app.Name = "Gopm"
 	app.Usage = "Go Package Manager"
