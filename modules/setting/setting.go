@@ -72,6 +72,7 @@ var (
 		"gitcafe.com":     3,
 		"launchpad.net":   2,
 		"labix.org":       3,
+		"gopm.io":         3,
 	}
 	CommonRes = []string{"views", "templates", "static", "public", "conf"}
 )

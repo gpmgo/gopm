@@ -44,7 +44,7 @@ func GetGithubCredentials() string {
 		"&client_secret=" + setting.Cfg.MustValue("github", "CLIENT_SECRET")
 }
 
-func getGithubDoc(
+func getGithubPkg(
 	client *http.Client,
 	match map[string]string,
 	n *Node,
@@ -90,7 +90,7 @@ func getGithubDoc(
 			}
 		}
 		if etag == n.Revision {
-			log.Log("GET Package hasn't changed: %s", n.ImportPath)
+			log.Log("Package hasn't changed: %s", n.ImportPath)
 			return nil, nil
 		}
 		n.Revision = etag

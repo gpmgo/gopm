@@ -41,12 +41,13 @@ type service struct {
 
 // services is the list of source code control services handled by gopm.
 var services = []*service{
-	{githubPattern, "github.com/", getGithubDoc},
-	{googlePattern, "code.google.com/", getGoogleDoc},
-	{bitbucketPattern, "bitbucket.org/", getBitbucketDoc},
-	{oscPattern, "git.oschina.net/", getOscDoc},
-	{gitcafePattern, "gitcafe.com/", getGitcafeDoc},
-	{launchpadPattern, "launchpad.net/", getLaunchpadDoc},
+	{githubPattern, "github.com/", getGithubPkg},
+	{googlePattern, "code.google.com/", getGooglePkg},
+	{bitbucketPattern, "bitbucket.org/", getBitbucketPkg},
+	{oscPattern, "git.oschina.net/", getOscPkg},
+	{gitcafePattern, "gitcafe.com/", getGitcafePkg},
+	{launchpadPattern, "launchpad.net/", getLaunchpadPkg},
+	{gopmPattern, "gopm.io/", getGopmPkg},
 }
 
 type RevisionType string
@@ -279,13 +280,13 @@ metaScan:
 			repo = repo[i+len("://"):]
 
 			match = map[string]string{
-				// Used in getVCSDoc, same as vcsPattern matches.
+				// Used in getVCSPkg, same as vcsPattern matches.
 				"importPath": importPath,
 				"repo":       repo,
 				"vcs":        vcs,
 				"dir":        importPath[len(projectRoot):],
 
-				// Used in getVCSDoc
+				// Used in getVCSPkg
 				"scheme": proto,
 
 				// Used in getDynamic.

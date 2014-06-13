@@ -36,7 +36,7 @@ var (
 	gitcafePattern    = regexp.MustCompile(`^gitcafe\.com/(?P<owner>[a-z0-9A-Z_.\-]+)/(?P<repo>[a-z0-9A-Z_.\-]+)(?P<dir>/[a-z0-9A-Z_.\-/]*)?$`)
 )
 
-func getGitcafeDoc(
+func getGitcafePkg(
 	client *http.Client,
 	match map[string]string,
 	n *Node,

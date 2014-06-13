@@ -158,7 +158,7 @@ func downloadFiles(
 	return nil
 }
 
-func getGoogleDoc(
+func getGooglePkg(
 	client *http.Client,
 	match map[string]string,
 	n *Node,

@@ -130,7 +130,7 @@ func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error)
 		if setting.LibraryMode {
 			errors.AppendError(errors.NewErrDownload(n.ImportPath + "\n" + err.Error()))
 		}
-		log.Error("get", "Fail to download pakage: "+n.ImportPath)
+		log.Error("get", "Fail to download package: "+n.ImportPath)
 		log.Error("", "\t"+err.Error())
 		failConut++
 		os.RemoveAll(n.InstallPath)

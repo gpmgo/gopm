@@ -20,7 +20,6 @@ import (
 	"os"
 	"path"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/Unknwon/cae/zip"
@@ -32,57 +31,46 @@ import (
 )
 
 var (
-	oscTagRe      = regexp.MustCompile(`/repository/archive\?ref=(.*)">`)
-	oscRevisionRe = regexp.MustCompile(`<span class='sha'>[a-z0-9A-Z]*`)
-	oscPattern    = regexp.MustCompile(`^git\.oschina\.net/(?P<owner>[a-z0-9A-Z_.\-]+)/(?P<repo>[a-z0-9A-Z_.\-]+)(?P<dir>/[a-z0-9A-Z_.\-/]*)?$`)
+	gopmPattern = regexp.MustCompile(`^gopm\.io/(?P<owner>[a-z0-9A-Z_.\-]+)/(?P<repo>[a-z0-9A-Z_.\-]+)(?P<dir>/[a-z0-9A-Z_.\-/]*)?$`)
 )
 
-func getOscPkg(
+func getGopmPkg(
 	client *http.Client,
 	match map[string]string,
 	n *Node,
 	ctx *cli.Context) ([]string, error) {
 
-	// Check downlaod type.
-	switch n.Type {
-	case BRANCH:
-		if !n.IsEmptyVal() {
-			match["sha"] = n.Value
-			break
+	if !n.IsEmptyVal() {
+		match["sha"] = n.Value
+	} else {
+		var rel struct {
+			Tag   string `json:"tag"`
+			Error string `json:"error"`
 		}
 
-		match["sha"] = MASTER
-
-		// Get revision.
-		p, err := com.HttpGetBytes(client,
-			com.Expand("http://git.oschina.net/{owner}/{repo}/tree/{sha}", match), nil)
-		if err != nil {
-			return nil, fmt.Errorf("fail to fetch revision page: %v", err)
-		}
-
-		if m := oscRevisionRe.FindSubmatch(p); m == nil {
-			return nil, fmt.Errorf("fail to get revision: %v", err)
+		if err := com.HttpGetJSON(client,
+			com.Expand("http://gopm.io/api/v1/{owner}/{repo}/releases/latest", match),
+			&rel); err != nil {
+			log.Warn("GET", "Fail to get revision")
+			log.Warn("", "\t"+err.Error())
+		} else if len(rel.Tag) == 0 {
+			log.Warn("GET", "Fail to get revision")
+			log.Warn("", "\t"+rel.Error)
 		} else {
-			etag := strings.TrimPrefix(string(m[0]), `<span class='sha'>`)
-			if etag == n.Revision {
-				log.Log("GET Package hasn't changed: %s", n.ImportPath)
+			if rel.Tag == n.Revision {
+				log.Log("Package hasn't changed: %s", n.ImportPath)
 				return nil, nil
 			}
-			n.Revision = etag
+			n.Revision = rel.Tag
+			match["sha"] = n.Revision
 		}
-	case TAG, COMMIT:
-		match["sha"] = n.Value
-	default:
-		return nil, fmt.Errorf("invalid node type: %s", n.Type)
 	}
-
-	// zip: http://{projectRoot}/repository/archive?ref={sha}
 
 	// Downlaod archive.
 	tmpPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
 		n.RootPath+"-"+fmt.Sprintf("%d", time.Now().Nanosecond())+".zip")
 	if err := com.HttpGetToFile(client,
-		com.Expand("http://git.oschina.net/{owner}/{repo}/repository/archive?ref={sha}", match),
+		com.Expand("http://gopm.io/{owner}/{repo}.zip?r={sha}", match),
 		nil, tmpPath); err != nil {
 		return nil, fmt.Errorf("fail to download archive: %v", n.ImportPath, err)
 	}
@@ -92,14 +80,9 @@ func getOscPkg(
 	os.RemoveAll(n.InstallPath)
 	os.MkdirAll(path.Dir(n.InstallPath), os.ModePerm)
 
-	tmpExtPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
-		n.RootPath+"-"+fmt.Sprintf("%d", time.Now().Nanosecond()))
 	// To prevent same output folder name, need to extract to temp path then move.
-	if err := zip.ExtractTo(tmpPath, tmpExtPath); err != nil {
+	if err := zip.ExtractTo(tmpPath, n.InstallPath); err != nil {
 		return nil, fmt.Errorf("fail to extract archive: %v", err)
-	} else if err = os.Rename(path.Join(tmpExtPath, com.Expand("{repo}", match)),
-		n.InstallPath); err != nil {
-		return nil, fmt.Errorf("fail to rename directory: %v", err)
 	}
 
 	// Check if need to check imports.

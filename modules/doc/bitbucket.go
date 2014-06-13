@@ -36,7 +36,7 @@ var (
 	bitbucketEtagRe  = regexp.MustCompile(`^(hg|git)-`)
 )
 
-func getBitbucketDoc(
+func getBitbucketPkg(
 	client *http.Client,
 	match map[string]string,
 	n *Node,
