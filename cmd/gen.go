@@ -17,6 +17,7 @@ package cmd
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -88,7 +89,29 @@ func genGopmfile() (*goconfig.ConfigFile, string, []string, error) {
 
 	// Check dependencies.
 	target := doc.ParseTarget(gf.MustValue("target", "path"))
-	imports, err := doc.GetImports(target, doc.GetRootPath(target), setting.WorkDir, false)
+	rootPath := doc.GetRootPath(target)
+
+	oldGopath := os.Getenv("GOPATH")
+	if len(oldGopath) == 0 || !com.IsExist(path.Join(oldGopath, "src", rootPath)) {
+		tmpPath := path.Join(setting.InstallRepoPath, rootPath)
+		os.RemoveAll(tmpPath)
+
+		relPath, err := filepath.Rel(target, rootPath)
+		if err != nil {
+			log.Error("", "Fail to get relative path of target")
+			log.Fatal("", "\t"+err.Error())
+		}
+		absPath, _ := filepath.Abs(relPath)
+		if setting.IsWindows {
+			com.CopyDir(absPath, tmpPath, func(filePath string) bool {
+				return !strings.Contains(filePath, ".git")
+			})
+		} else {
+			os.Symlink(absPath, tmpPath)
+		}
+	}
+
+	imports, err := doc.GetImports(target, rootPath, setting.WorkDir, false)
 	if err != nil {
 		return nil, "", nil, err
 	}

@@ -118,8 +118,8 @@ func GetImports(importPath, rootPath, srcPath string, isTest bool) ([]string, er
 			if setting.LibraryMode {
 				return nil, fmt.Errorf("Fail to get imports: %v", err)
 			}
-			log.Error("", "Fail to get imports")
-			log.Fatal("", err.Error())
+			log.Error("", "Fail to get imports:")
+			log.Fatal("", "\t"+err.Error())
 		}
 	}
 
@@ -137,7 +137,7 @@ func GetImports(importPath, rootPath, srcPath string, isTest bool) ([]string, er
 			relPath, err := filepath.Rel(importPath, name)
 			if err != nil {
 				log.Error("", "Fail to get relative path of import")
-				log.Fatal("", err.Error())
+				log.Fatal("", "\t"+err.Error())
 			}
 			moreImports, err := GetImports(name, rootPath, "./"+relPath, isTest)
 			if err != nil {
