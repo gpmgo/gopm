@@ -21,6 +21,8 @@ import (
 	"os"
 
 	"github.com/gpmgo/gopm/gopm"
+
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 func main() {
