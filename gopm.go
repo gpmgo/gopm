@@ -24,5 +24,6 @@ import (
 )
 
 func main() {
+	setting.LibraryMode = false
 	gopm.Run(os.Args)
 }
