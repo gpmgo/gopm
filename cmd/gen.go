@@ -95,6 +95,7 @@ func genGopmfile() (*goconfig.ConfigFile, string, []string, error) {
 	if len(oldGopath) == 0 || !com.IsExist(path.Join(oldGopath, "src", rootPath)) {
 		tmpPath := path.Join(setting.InstallRepoPath, rootPath)
 		os.RemoveAll(tmpPath)
+		os.MkdirAll(path.Dir(tmpPath), os.ModePerm)
 
 		relPath, err := filepath.Rel(target, rootPath)
 		if err != nil {
