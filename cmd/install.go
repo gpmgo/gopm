@@ -37,8 +37,8 @@ gopm install <import path>
 If no argument is supplied, then gopmfile must be present`,
 	Action: runInstall,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"pkg, p", "only install non-main packages"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"pkg, p", "only install non-main packages", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 

@@ -40,8 +40,8 @@ Can only specify one each time, and only works for projects that
 contain main package`,
 	Action: runExec,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 

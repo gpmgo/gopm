@@ -59,7 +59,7 @@ func main() {
 		cmd.CmdConfig,
 	}
 	app.Flags = append(app.Flags, []cli.Flag{
-		cli.BoolFlag{"noterm", "disable color output"},
+		cli.BoolFlag{"noterm", "disable color output", ""},
 	}...)
 	app.Run(os.Args)
 }

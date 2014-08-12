@@ -42,9 +42,9 @@ Can only specify one each time, and only works for projects that
 contain main package`,
 	Action: runBin,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"dir, d", "build binary to given directory(second argument)"},
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"dir, d", "build binary to given directory(second argument)", ""},
+		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 

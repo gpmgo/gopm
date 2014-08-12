@@ -33,7 +33,7 @@ gopm config github [client_id] [client_secret]
 `,
 	Action: runConfig,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 

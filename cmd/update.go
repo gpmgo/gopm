@@ -42,7 +42,7 @@ Resources will be updated automatically after executed this command,
 but you have to confirm before updaing gopm itself.`,
 	Action: runUpdate,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
