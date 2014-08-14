@@ -53,7 +53,7 @@ func runInstall(ctx *cli.Context) {
 	var target, srcPath string
 	switch len(ctx.Args()) {
 	case 0:
-		_, target, _, err = genGopmfile()
+		_, target, _, err = genGopmfile(ctx)
 		if err != nil {
 			errors.SetError(err)
 			return

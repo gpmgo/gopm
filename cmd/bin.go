@@ -139,7 +139,7 @@ func runBin(ctx *cli.Context) {
 		return
 	}
 
-	gf, target, _, err := genGopmfile()
+	gf, target, _, err := genGopmfile(ctx)
 	if err != nil {
 		errors.SetError(err)
 		return

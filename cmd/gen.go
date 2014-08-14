@@ -17,7 +17,6 @@ package cmd
 import (
 	"os"
 	"path"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -52,7 +51,7 @@ func runGen(ctx *cli.Context) {
 		return
 	}
 
-	gf, _, _, err := genGopmfile()
+	gf, _, _, err := genGopmfile(ctx)
 	if err != nil {
 		errors.SetError(err)
 		return
@@ -78,39 +77,26 @@ func runGen(ctx *cli.Context) {
 
 // genGopmfile generates gopmfile and returns it,
 // along with target and dependencies.
-func genGopmfile() (*goconfig.ConfigFile, string, []string, error) {
+func genGopmfile(ctx *cli.Context) (*goconfig.ConfigFile, string, []string, error) {
 	if !com.IsExist(setting.GOPMFILE) {
 		os.Create(setting.GOPMFILE)
+	}
+
+	if com.IsSliceContainsStr([]string{"gen", "list"}, ctx.Command.Name) {
+		os.RemoveAll(doc.VENDOR)
+		if !setting.Debug {
+			defer os.RemoveAll(doc.VENDOR)
+		}
 	}
 	gf, err := loadGopmfile(setting.GOPMFILE)
 	if err != nil {
 		return nil, "", nil, err
 	}
-
-	// Check dependencies.
-	target := doc.ParseTarget(gf.MustValue("target", "path"))
-	rootPath := doc.GetRootPath(target)
-
-	oldGopath := os.Getenv("GOPATH")
-	if len(oldGopath) == 0 || !com.IsExist(path.Join(oldGopath, "src", rootPath)) {
-		tmpPath := path.Join(setting.InstallRepoPath, rootPath)
-		os.RemoveAll(tmpPath)
-		os.MkdirAll(path.Dir(tmpPath), os.ModePerm)
-
-		relPath, err := filepath.Rel(target, rootPath)
-		if err != nil {
-			log.Error("", "Fail to get relative path of target")
-			log.Fatal("", "\t"+err.Error())
-		}
-		absPath, _ := filepath.Abs(relPath)
-		if setting.IsWindows {
-			com.CopyDir(absPath, tmpPath, func(filePath string) bool {
-				return !strings.Contains(filePath, ".git")
-			})
-		} else {
-			os.Symlink(absPath, tmpPath)
-		}
+	target, _, _, err := genNewGopath(ctx, false)
+	if err != nil {
+		return nil, "", nil, err
 	}
+	rootPath := doc.GetRootPath(target)
 
 	imports, err := doc.GetImports(target, rootPath, setting.WorkDir, false)
 	if err != nil {

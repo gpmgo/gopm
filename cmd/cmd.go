@@ -71,7 +71,7 @@ func setup(ctx *cli.Context) (err error) {
 
 	if !ctx.Bool("remote") {
 		if ctx.Bool("local") {
-			gf, _, _, err := genGopmfile()
+			gf, _, _, err := genGopmfile(ctx)
 			if err != nil {
 				return err
 			}
@@ -275,8 +275,7 @@ func getDepPkgs(
 		if _, ok := depPkgs[pkg.RootPath]; !ok {
 			var newPath string
 			if !build.IsLocalImport(name) && pkg.Type != doc.LOCAL {
-				pkgPath := strings.Replace(
-					pkg.ImportPath, pkg.RootPath, pkg.RootPath+pkg.ValSuffix(), 1)
+				pkgPath := pkg.RootPath + pkg.ValSuffix()
 				newPath = path.Join(setting.InstallRepoPath, pkgPath)
 				if len(pkg.ValSuffix()) == 0 && !ctx.Bool("remote") &&
 					com.IsDir(path.Join(setting.InstallGopath, pkgPath)) {
@@ -287,6 +286,7 @@ func getDepPkgs(
 				} else {
 					if !com.IsExist(newPath) || ctx.Bool("update") {
 						node := doc.NewNode(pkg.ImportPath, pkg.Type, pkg.Value, true)
+						node.IsGetDeps = false
 						if err = downloadPackages(target, ctx, []*doc.Node{node}); err != nil {
 							return err
 						}
@@ -303,7 +303,18 @@ func getDepPkgs(
 				}
 			}
 			depPkgs[pkg.RootPath] = pkg
-			if err = getDepPkgs(gf, ctx, pkg.ImportPath, newPath, depPkgs, false); err != nil {
+
+			curPath = path.Join(doc.VENDOR, "src", pkg.RootPath)
+			log.Log("Linking %s", pkg.RootPath+pkg.ValSuffix())
+			if err := autoLink(newPath, curPath); err != nil {
+				if setting.LibraryMode {
+					return fmt.Errorf("Fail to make link dependency: %v", err)
+				}
+				log.Error("", "Fail to make link dependency:")
+				log.Fatal("", "\t"+err.Error())
+			}
+
+			if err = getDepPkgs(gf, ctx, pkg.ImportPath, curPath, depPkgs, false); err != nil {
 				return err
 			}
 		}
@@ -319,12 +330,39 @@ func autoLink(oldPath, newPath string) error {
 func genNewGopath(ctx *cli.Context, isTest bool) (string, string, string, error) {
 	log.Trace("Work directory: %s", setting.WorkDir)
 
-	gf, target, _, err := genGopmfile()
+	gf, err := loadGopmfile(setting.GOPMFILE)
 	if err != nil {
 		return "", "", "", err
 	}
+
+	// Check dependencies.
+	target := doc.ParseTarget(gf.MustValue("target", "path"))
 	if target == "." {
 		_, target = filepath.Split(setting.WorkDir)
+	}
+
+	// Clean old files.
+	newGopath := path.Join(setting.WorkDir, doc.VENDOR)
+	newGopathSrc := path.Join(newGopath, "src")
+	os.RemoveAll(newGopathSrc)
+	os.MkdirAll(newGopathSrc, os.ModePerm)
+
+	// Link self.
+	targetRoot := doc.GetRootPath(target)
+	log.Log("Linking %s", targetRoot)
+	if setting.Debug {
+		fmt.Println(target)
+		fmt.Println(path.Join(strings.TrimSuffix(setting.WorkDir, target), targetRoot))
+		fmt.Println(path.Join(newGopathSrc, targetRoot))
+	}
+	if err := autoLink(path.Join(strings.TrimSuffix(setting.WorkDir, target), targetRoot),
+		path.Join(newGopathSrc, targetRoot)); err != nil &&
+		!strings.Contains(err.Error(), "file exists") {
+		if setting.LibraryMode {
+			return "", "", "", fmt.Errorf("Fail to make link self: %v", err)
+		}
+		log.Error("", "Fail to make link self:")
+		log.Fatal("", "\t"+err.Error())
 	}
 
 	// Check and loads dependency pakcages.
@@ -337,74 +375,7 @@ func genNewGopath(ctx *cli.Context, isTest bool) (string, string, string, error)
 		log.Fatal("", "\t"+err.Error())
 	}
 
-	// Clean old files.
-	newGopath := path.Join(setting.WorkDir, doc.VENDOR)
-	newGopathSrc := path.Join(newGopath, "src")
-	os.RemoveAll(newGopathSrc)
-	os.MkdirAll(newGopathSrc, os.ModePerm)
-
-	for name, pkg := range depPkgs {
-		var oldPath string
-		if pkg.Type == doc.LOCAL {
-			oldPath, _ = filepath.Abs(pkg.Value)
-		} else {
-			oldPath = path.Join(setting.InstallRepoPath, name) + pkg.ValSuffix()
-		}
-
-		newPath := path.Join(newGopathSrc, name)
-		paths := strings.Split(name, "/")
-		var isExist, isCurChild bool
-		if name == target {
-			continue
-		}
-
-		for i := 0; i < len(paths)-1; i++ {
-			pName := strings.Join(paths[:len(paths)-1-i], "/")
-			if _, ok := depPkgs[pName]; ok {
-				isExist = true
-				break
-			}
-			if target == pName {
-				isCurChild = true
-				break
-			}
-		}
-		if isCurChild {
-			continue
-		}
-
-		if !isExist && (!pkg.IsEmptyVal() || ctx.Bool("remote") ||
-			!com.IsDir(path.Join(setting.InstallGopath, pkg.ImportPath))) {
-
-			log.Log("Linking %s", name+pkg.ValSuffix())
-			if err := autoLink(oldPath, newPath); err != nil {
-				if setting.LibraryMode {
-					return "", "", "", fmt.Errorf("Fail to make link dependency: %v", err)
-				}
-				log.Error("", "Fail to make link dependency:")
-				log.Fatal("", "\t"+err.Error())
-			}
-		}
-	}
-
-	targetRoot := doc.GetRootPath(target)
 	newCurPath := path.Join(newGopathSrc, target)
-	log.Log("Linking %s", targetRoot)
-	if setting.Debug {
-		fmt.Println(target)
-		fmt.Println(path.Join(strings.TrimSuffix(setting.WorkDir, target), targetRoot))
-		fmt.Println(path.Join(newGopathSrc, targetRoot))
-	}
-	if err := autoLink(path.Join(
-		strings.TrimSuffix(setting.WorkDir, target), targetRoot),
-		path.Join(newGopathSrc, targetRoot)); err != nil &&
-		!strings.Contains(err.Error(), "file exists") {
-		if setting.LibraryMode {
-			return "", "", "", fmt.Errorf("Fail to make link self: %v", err)
-		}
-		log.Error("", "Fail to make link self:")
-		log.Fatal("", "\t"+err.Error())
-	}
 	return target, newGopath, newCurPath, nil
 }
 

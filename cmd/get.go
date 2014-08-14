@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -139,8 +139,11 @@ func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error)
 
 	if !n.IsGetDeps {
 		imports = nil
+	} else {
+		fmt.Println(n.InstallPath, n.ValSuffix())
+		// err=autoLink(n.InstallPath, newPath)
 	}
-	return n, imports, nil
+	return n, imports, err
 }
 
 // downloadPackages downloads packages with certain commit,
@@ -285,7 +288,7 @@ func getPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err error)
 
 func getByGopmfile(ctx *cli.Context) error {
 	// Make sure gopmfile exists and up-to-date.
-	gf, target, imports, err := genGopmfile()
+	gf, target, imports, err := genGopmfile(ctx)
 	if err != nil {
 		return err
 	}

@@ -19,7 +19,6 @@ import (
 	"go/build"
 	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -91,18 +90,6 @@ func IsGoRepoPath(name string) bool {
 
 // GetImports returns package denpendencies.
 func GetImports(importPath, rootPath, srcPath string, isTest bool) ([]string, error) {
-	tmpGopath := setting.InstallRepoPath
-	if setting.IsWindows {
-		// Windows's local repository path has "/src" suffix.
-		tmpGopath = path.Dir(tmpGopath)
-	} else {
-		if !com.IsExist(path.Join(setting.InstallRepoPath, "src")) {
-			if err := os.Symlink(setting.InstallRepoPath, path.Join(setting.InstallRepoPath, "src")); err != nil {
-				log.Error("", "Fail to setting symlink:")
-				log.Fatal("", "\t"+err.Error())
-			}
-		}
-	}
 	oldGopath := os.Getenv("GOPATH")
 
 	sep := ":"
@@ -111,7 +98,7 @@ func GetImports(importPath, rootPath, srcPath string, isTest bool) ([]string, er
 	}
 
 	ctxt := build.Default
-	ctxt.GOPATH = tmpGopath + sep + oldGopath
+	ctxt.GOPATH = VENDOR + sep + oldGopath
 	pkg, err := ctxt.Import(importPath, srcPath, build.AllowBinary)
 	if err != nil {
 		if _, ok := err.(*build.NoGoError); !ok {
@@ -134,12 +121,7 @@ func GetImports(importPath, rootPath, srcPath string, isTest bool) ([]string, er
 		if IsGoRepoPath(name) {
 			continue
 		} else if strings.HasPrefix(name, rootPath) {
-			relPath, err := filepath.Rel(importPath, name)
-			if err != nil {
-				log.Error("", "Fail to get relative path of import")
-				log.Fatal("", "\t"+err.Error())
-			}
-			moreImports, err := GetImports(name, rootPath, "./"+relPath, isTest)
+			moreImports, err := GetImports(name, rootPath, name, isTest)
 			if err != nil {
 				return nil, err
 			}

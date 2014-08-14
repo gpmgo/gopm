@@ -54,7 +54,7 @@ func runList(ctx *cli.Context) {
 		return
 	}
 
-	gf, _, imports, err := genGopmfile()
+	gf, _, imports, err := genGopmfile(ctx)
 	if err != nil {
 		errors.SetError(err)
 		return
