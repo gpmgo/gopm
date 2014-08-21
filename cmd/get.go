@@ -56,12 +56,12 @@ it will be skipped unless user enabled '--remote, -r' option
 then all the packages go into gopm local repository.`,
 	Action: runGet,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"gopath, g", "download all pakcages to GOPATH"},
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any"},
-		cli.BoolFlag{"example, e", "download dependencies for example folder"},
-		cli.BoolFlag{"remote, r", "download all pakcages to gopm local repository"},
-		cli.BoolFlag{"verbose, v", "show process details"},
-		cli.BoolFlag{"local,l", "download all packages to local gopath"},
+		cli.BoolFlag{"gopath, g", "download all pakcages to GOPATH", ""},
+		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
+		cli.BoolFlag{"example, e", "download dependencies for example folder", ""},
+		cli.BoolFlag{"remote, r", "download all pakcages to gopm local repository", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
+		cli.BoolFlag{"local,l", "download all packages to local gopath", ""},
 	},
 }
 

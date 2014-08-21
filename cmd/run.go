@@ -36,7 +36,7 @@ gopm run <go run commands>
 gopm run -l  will recursively find .gopmfile with value localPath and run the cmd in the .gopmfile,windows os is unspported, you need to run the command right at the localPath dir.`,
 	Action: runRun,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"local,l", "run command with local gopath context"},
+		cli.BoolFlag{"local,l", "run command with local gopath context", ""},
 	},
 }
 
