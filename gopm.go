@@ -54,6 +54,7 @@ func main() {
 		cmd.CmdGen,
 		cmd.CmdRun,
 		cmd.CmdBuild,
+		cmd.CmdTest,
 		cmd.CmdInstall,
 		cmd.CmdUpdate,
 		cmd.CmdConfig,
