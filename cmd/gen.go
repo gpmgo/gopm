@@ -57,7 +57,7 @@ func runGen(ctx *cli.Context) {
 		return
 	}
 
-	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor, "")
+	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor)
 	if err != nil {
 		errors.SetError(err)
 		return

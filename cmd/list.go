@@ -67,7 +67,7 @@ func verSuffix(gf *goconfig.ConfigFile, name string) string {
 }
 
 // getDepList get list of dependencies in root path format and nature order.
-func getDepList(ctx *cli.Context, target, pkgPath, vendor, suffix string) ([]string, error) {
+func getDepList(ctx *cli.Context, target, pkgPath, vendor string) ([]string, error) {
 	vendorSrc := path.Join(vendor, "src")
 	rootPath := doc.GetRootPath(target)
 	// If work directory is not in GOPATH, then need to setup a vendor path.
@@ -79,7 +79,7 @@ func getDepList(ctx *cli.Context, target, pkgPath, vendor, suffix string) ([]str
 
 		// Make link of self.
 		log.Debug("Linking %s...", rootPath)
-		from := path.Join(strings.TrimSuffix(pkgPath, target+suffix), rootPath) + suffix
+		from := pkgPath
 		to := path.Join(vendorSrc, rootPath)
 		if setting.Debug {
 			log.Debug("Linking from %s to %s", from, to)
@@ -121,7 +121,7 @@ func runList(ctx *cli.Context) {
 		return
 	}
 
-	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor, "")
+	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor)
 	if err != nil {
 		errors.SetError(err)
 		return

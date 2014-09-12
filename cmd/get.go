@@ -102,7 +102,7 @@ func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error)
 	}
 	fmt.Println(n.ValSuffix())
 	if n.IsGetDeps {
-		imports, err = getDepList(ctx, n.ImportPath, srcPath, vendor, n.ValSuffix())
+		imports, err = getDepList(ctx, n.ImportPath, srcPath, vendor)
 		if err != nil {
 			return nil, nil, fmt.Errorf("fail to list imports(%s): %v", n.ImportPath, err)
 		}
@@ -260,7 +260,7 @@ func getByGopmfile(ctx *cli.Context) error {
 		return err
 	}
 
-	imports, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor, "")
+	imports, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor)
 	if err != nil {
 		return err
 	}
