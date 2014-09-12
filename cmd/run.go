@@ -85,7 +85,7 @@ func linkVendors(ctx *cli.Context) error {
 
 	// Make link of self.
 	log.Debug("Linking %s...", rootPath)
-	if err := autoLink(path.Join(strings.TrimSuffix(setting.WorkDir, target), rootPath),
+	if err := autoLink(setting.WorkDir,
 		path.Join(setting.DefaultVendorSrc, rootPath)); err != nil {
 		return fmt.Errorf("fail to link self: %v", err)
 	}
