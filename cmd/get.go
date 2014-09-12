@@ -100,7 +100,7 @@ func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error)
 		}
 		srcPath = n.InstallPath
 	}
-	fmt.Println(n.ValSuffix())
+
 	if n.IsGetDeps {
 		imports, err = getDepList(ctx, n.ImportPath, srcPath, vendor)
 		if err != nil {

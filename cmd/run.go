@@ -85,8 +85,12 @@ func linkVendors(ctx *cli.Context) error {
 
 	// Make link of self.
 	log.Debug("Linking %s...", rootPath)
-	if err := autoLink(setting.WorkDir,
-		path.Join(setting.DefaultVendorSrc, rootPath)); err != nil {
+	from := setting.WorkDir
+	to := path.Join(setting.DefaultVendorSrc, rootPath)
+	if setting.Debug {
+		log.Debug("Linking from %s to %s", from, to)
+	}
+	if err := autoLink(from, to); err != nil {
 		return fmt.Errorf("fail to link self: %v", err)
 	}
 
@@ -112,13 +116,17 @@ func linkVendors(ctx *cli.Context) error {
 	for lastIdx >= 0 {
 		pkg := stack[lastIdx]
 		linkPath := path.Join(setting.DefaultVendorSrc, pkg.RootPath)
+		if setting.Debug {
+			log.Debug("Import path: %s", pkg.ImportPath)
+			log.Debug("Linking path: %s", linkPath)
+		}
 		if base.IsExist(linkPath) {
 			stack = stack[:lastIdx]
 			lastIdx = len(stack) - 1
 			continue
 		}
 
-		if len(pkg.Value) == 0 && setting.HasGOPATHSetting &&
+		if pkg.IsEmptyVal() && setting.HasGOPATHSetting &&
 			base.IsExist(path.Join(setting.InstallGopath, pkg.RootPath)) {
 			stack = stack[:lastIdx]
 			lastIdx = len(stack) - 1
@@ -127,8 +135,7 @@ func linkVendors(ctx *cli.Context) error {
 
 		venderPath := path.Join(setting.InstallRepoPath, pkg.RootPath+pkg.ValSuffix())
 		if !base.IsExist(venderPath) {
-			errors.SetError(fmt.Errorf("package not installed: %s", pkg.RootPath+pkg.VerSuffix()))
-			return nil
+			return fmt.Errorf("package not installed: %s", pkg.RootPath+pkg.VerSuffix())
 		}
 
 		log.Debug("Linking %s...", pkg.RootPath+pkg.ValSuffix())
@@ -141,9 +148,10 @@ func linkVendors(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("fail to parse gopmfile(%s): %v", linkPath, err)
 		}
-		rootPath := doc.GetRootPath(target)
-
-		imports, err := doc.ListImports(target, rootPath, path.Join(linkPath, setting.VENDOR), linkPath, ctx.Bool("test"))
+		// parseGopmfile only returns right target when parse work directory.
+		target = pkg.RootPath
+		rootPath := target
+		imports, err := doc.ListImports(target, rootPath, setting.DefaultVendor, linkPath, ctx.Bool("test"))
 		if err != nil {
 			errors.SetError(err)
 		}
