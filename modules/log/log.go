@@ -1,6 +1,4 @@
-// +build !windows
-
-// Copyright 2013 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -14,111 +12,102 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-// Package log provides npm-like style log output.
 package log
 
 import (
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/aybabtme/color/brush"
+	"runtime"
+	"time"
 )
 
-var Output io.Writer = os.Stdout
+const (
+	PREFIX      = "[GOPM]"
+	TIME_FORMAT = "06-01-02 15:04:05"
+)
 
-func Error(hl, msg string) {
-	if PureMode {
-		errorP(hl, msg)
-	}
+var (
+	Verbose, NonColor bool
+	Output            io.Writer = os.Stdout
 
-	if len(hl) > 0 {
-		hl = " " + brush.Red(hl).String()
+	LEVEL_FLAGS = [...]string{"DEBUG", " INFO", " WARN", "ERROR", "FATAL"}
+)
+
+func init() {
+	if runtime.GOOS == "windows" {
+		NonColor = true
 	}
-	fmt.Fprintf(Output, "gopm %s%s %s\n", brush.Red("ERR!"), hl, msg)
 }
 
-func Fatal(hl, msg string) {
-	if PureMode {
-		fatal(hl, msg)
+const (
+	DEBUG = iota
+	INFO
+	WARNING
+	ERROR
+	FATAL
+)
+
+func Print(level int, format string, args ...interface{}) {
+	if !Verbose && level < WARNING {
+		return
 	}
 
-	Error(hl, msg)
-	os.Exit(2)
+	if NonColor {
+		fmt.Fprintf(Output, "%s %s [%s] %s\n",
+			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
+			fmt.Sprintf(format, args...))
+		if level == FATAL {
+			os.Exit(1)
+		}
+		return
+	}
+
+	switch level {
+	case DEBUG:
+		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[34m%s\033[0m] %s\n",
+			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
+			fmt.Sprintf(format, args...))
+	case INFO:
+		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[32m%s\033[0m] %s\n",
+			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
+			fmt.Sprintf(format, args...))
+	case WARNING:
+		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[33m%s\033[0m] %s\n",
+			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
+			fmt.Sprintf(format, args...))
+	case ERROR:
+		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[31m%s\033[0m] %s\n",
+			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
+			fmt.Sprintf(format, args...))
+	case FATAL:
+		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[35m%s\033[0m] %s\n",
+			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
+			fmt.Sprintf(format, args...))
+		os.Exit(1)
+	default:
+		fmt.Fprintf(Output, "%s %s [%s] %s\n",
+			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
+			fmt.Sprintf(format, args...))
+	}
+}
+
+func Debug(format string, args ...interface{}) {
+	Print(DEBUG, format, args...)
 }
 
 func Warn(format string, args ...interface{}) {
-	if PureMode {
-		warn(format, args...)
-		return
-	}
-
-	fmt.Fprintf(Output, "gopm %s %s\n", brush.Purple("WARN"),
-		fmt.Sprintf(format, args...))
+	Print(WARNING, format, args...)
 }
 
-func Log(format string, args ...interface{}) {
-	if PureMode {
-		log(format, args...)
-		return
-	}
-
-	if !Verbose {
-		return
-	}
-	fmt.Fprintf(Output, "gopm %s %s\n", brush.White("INFO"),
-		fmt.Sprintf(format, args...))
+func Info(format string, args ...interface{}) {
+	Print(INFO, format, args...)
 }
 
-func Trace(format string, args ...interface{}) {
-	if PureMode {
-		trace(format, args...)
-		return
-	}
-
-	if !Verbose {
-		return
-	}
-	fmt.Fprintf(Output, "gopm %s %s\n", brush.Blue("TRAC"),
-		fmt.Sprintf(format, args...))
+func Error(format string, args ...interface{}) {
+	Print(ERROR, format, args...)
 }
 
-func Success(title, hl, msg string) {
-	if PureMode {
-		success(title, hl, msg)
-		return
-	}
-
-	if !Verbose {
-		return
-	}
-	if len(hl) > 0 {
-		hl = " " + brush.Green(hl).String()
-	}
-	fmt.Fprintf(Output, "gopm %s%s %s\n", brush.Green(title), hl, msg)
-}
-
-func Message(hl, msg string) {
-	if PureMode {
-		message(hl, msg)
-		return
-	}
-
-	if !Verbose {
-		return
-	}
-	if len(hl) > 0 {
-		hl = " " + brush.Yellow(hl).String()
-	}
-	fmt.Fprintf(Output, "gopm %s%s %s\n", brush.Yellow("MSG!"), hl, msg)
-}
-
-func Help(format string, args ...interface{}) {
-	if PureMode {
-		help(format, args...)
-	}
-
-	fmt.Fprintf(Output, "gopm %s %s\n", brush.Cyan("HELP"),
-		fmt.Sprintf(format, args...))
-	os.Exit(2)
+func Fatal(format string, args ...interface{}) {
+	Print(FATAL, format, args...)
 }

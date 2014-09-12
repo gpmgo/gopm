@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -17,10 +17,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path"
 
-	"github.com/codegangsta/cli"
-
-	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
@@ -37,9 +36,9 @@ gopm install
 If no argument is supplied, then gopmfile must be present`,
 	Action: runInstall,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"package, p", "only install non-main packages"},
-		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		// cli.BoolFlag{"package, p", "only install non-main packages", ""},
+		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
@@ -49,64 +48,35 @@ func runInstall(ctx *cli.Context) {
 		return
 	}
 
-	var err error
-	var target, srcPath string
-	switch len(ctx.Args()) {
-	case 0:
-		_, target, _, err = genGopmfile(ctx)
-		if err != nil {
-			errors.SetError(err)
-			return
-		}
-		srcPath = setting.WorkDir
-	default:
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Too many arguments: no argument needed"))
-			return
-		}
-		log.Error("install", "Too many arguments:")
-		log.Error("", "\tno argument needed")
-		log.Help("Try 'gopm help install' to get more information")
+	os.RemoveAll(setting.DefaultVendor)
+	if !setting.Debug {
+		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
-	os.RemoveAll(doc.VENDOR)
-
-	_, newGopath, newCurPath, err := genNewGopath(ctx, false)
-	if err != nil {
-		setting.RuntimeError.HasError = true
-		setting.RuntimeError.Fatal = err
+	if err := linkVendors(ctx); err != nil {
+		errors.SetError(err)
 		return
 	}
 
-	log.Trace("Installing...")
-
-	var installRepos []string
-	if ctx.Bool("package") {
-		installRepos, err = doc.GetImports(target, doc.GetRootPath(target), srcPath, false)
-		if err != nil {
-			errors.SetError(err)
-			return
-		}
-	} else {
-		installRepos = []string{target}
+	// Get target name.
+	gfPath := path.Join(setting.WorkDir, setting.GOPMFILE)
+	_, target, err := parseGopmfile(gfPath)
+	if err != nil {
+		errors.SetError(fmt.Errorf("fail to parse gopmfile: %v", err))
+		return
 	}
 
-	for _, repo := range installRepos {
-		cmdArgs := []string{"go", "install"}
+	log.Info("Installing...")
 
-		if ctx.Bool("verbose") {
-			cmdArgs = append(cmdArgs, "-v")
-		}
-		cmdArgs = append(cmdArgs, repo)
-		if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
-			if setting.LibraryMode {
-				errors.SetError(fmt.Errorf("Fail to install program: %v", err))
-				return
-			}
-			log.Error("install", "Fail to install program:")
-			log.Fatal("", "\t"+err.Error())
-		}
+	cmdArgs := []string{"go", "install"}
+	if ctx.Bool("verbose") {
+		cmdArgs = append(cmdArgs, "-v")
+	}
+	cmdArgs = append(cmdArgs, target)
+	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
+		errors.SetError(fmt.Errorf("fail to run program: %v", err))
+		return
 	}
 
-	log.Success("SUCC", "install", "Command executed successfully!")
+	log.Info("Command executed successfully!")
 }

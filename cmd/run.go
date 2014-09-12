@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -17,11 +17,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
-	"github.com/Unknwon/goconfig"
-	"github.com/codegangsta/cli"
-
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/doc"
 	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
@@ -40,9 +40,125 @@ and run the cmd in the .gopmfile, Windows hasn't supported yet,
 you need to run the command right at the local_gopath dir.`,
 	Action: runRun,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"local, l", "run command with local gopath context"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"local, l", "run command with local gopath context", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
+}
+
+func valSuffix(val string) string {
+	if len(val) > 0 {
+		return "." + val
+	}
+	return ""
+}
+
+// validPkgInfo checks if the information of the package is valid.
+func validPkgInfo(info string) (doc.RevisionType, string, error) {
+	if len(info) == 0 {
+		return doc.BRANCH, "", nil
+	}
+
+	infos := strings.Split(info, ":")
+	tp := doc.RevisionType(infos[0])
+	val := infos[1]
+
+	if len(infos) == 2 {
+		switch tp {
+		case doc.BRANCH, doc.COMMIT, doc.TAG:
+		default:
+			return "", "", fmt.Errorf("invalid node type: %v", tp)
+		}
+		return tp, val, nil
+	}
+	return "", "", fmt.Errorf("cannot parse dependency version: %v", info)
+}
+
+func linkVendors(ctx *cli.Context) error {
+	gfPath := path.Join(setting.WorkDir, setting.GOPMFILE)
+	gf, target, err := parseGopmfile(gfPath)
+	if err != nil {
+		return fmt.Errorf("fail to parse gopmfile: %v", err)
+	}
+	rootPath := doc.GetRootPath(target)
+
+	// TODO: local support.
+
+	// Make link of self.
+	log.Debug("Linking %s...", rootPath)
+	if err := autoLink(path.Join(strings.TrimSuffix(setting.WorkDir, target), rootPath),
+		path.Join(setting.DefaultVendorSrc, rootPath)); err != nil {
+		return fmt.Errorf("fail to link self: %v", err)
+	}
+
+	// Check and loads dependency pakcages.
+	log.Debug("Loading dependencies...")
+	imports, err := doc.ListImports(target, rootPath, setting.DefaultVendor, setting.WorkDir, ctx.Bool("test"))
+	if err != nil {
+		return fmt.Errorf("fail to list imports: %v", err)
+	}
+
+	stack := make([]*doc.Pkg, len(imports))
+	for i, name := range imports {
+		name := doc.GetRootPath(name)
+		tp, val, err := validPkgInfo(gf.MustValue("deps", name))
+		if err != nil {
+			return fmt.Errorf("fail to validate package(%s): %v", name, err)
+		}
+
+		stack[i] = doc.NewPkg(name, tp, val)
+	}
+
+	lastIdx := len(stack) - 1
+	for lastIdx >= 0 {
+		pkg := stack[lastIdx]
+		linkPath := path.Join(setting.DefaultVendorSrc, pkg.RootPath)
+		if base.IsExist(linkPath) {
+			stack = stack[:lastIdx]
+			lastIdx = len(stack) - 1
+			continue
+		}
+
+		if len(pkg.Value) == 0 && setting.HasGOPATHSetting &&
+			base.IsExist(path.Join(setting.InstallGopath, pkg.RootPath)) {
+			stack = stack[:lastIdx]
+			lastIdx = len(stack) - 1
+			continue
+		}
+
+		venderPath := path.Join(setting.InstallRepoPath, pkg.RootPath+pkg.ValSuffix())
+		if !base.IsExist(venderPath) {
+			errors.SetError(fmt.Errorf("package not installed: %s", pkg.RootPath+pkg.VerSuffix()))
+			return nil
+		}
+
+		log.Debug("Linking %s...", pkg.RootPath+pkg.ValSuffix())
+		if err := autoLink(venderPath, linkPath); err != nil {
+			return fmt.Errorf("fail to link dependency(%s): %v", pkg.RootPath, err)
+		}
+		stack = stack[:lastIdx]
+
+		gf, target, err := parseGopmfile(path.Join(linkPath, setting.GOPMFILE))
+		if err != nil {
+			return fmt.Errorf("fail to parse gopmfile(%s): %v", linkPath, err)
+		}
+		rootPath := doc.GetRootPath(target)
+
+		imports, err := doc.ListImports(target, rootPath, path.Join(linkPath, setting.VENDOR), linkPath, ctx.Bool("test"))
+		if err != nil {
+			errors.SetError(err)
+		}
+		for _, name := range imports {
+			name := doc.GetRootPath(name)
+			tp, val, err := validPkgInfo(gf.MustValue("deps", name))
+			if err != nil {
+				return fmt.Errorf("fail to validate package(%s): %v", name, err)
+			}
+
+			stack = append(stack, doc.NewPkg(name, tp, val))
+		}
+		lastIdx = len(stack) - 1
+	}
+	return nil
 }
 
 func runRun(ctx *cli.Context) {
@@ -51,70 +167,24 @@ func runRun(ctx *cli.Context) {
 		return
 	}
 
-	// TODO: So ugly, need to fix.
-	if ctx.Bool("local") {
-		var localGopath string
-		var err error
-		var wd string
-		var gf *goconfig.ConfigFile
-		wd, _ = os.Getwd()
-		for wd != "/" {
-			gf, _ = goconfig.LoadConfigFile(".gopmfile")
-			if gf != nil {
-				localGopath = gf.MustValue("project", "local_gopath")
-			}
-			if localGopath != "" {
-				break
-			}
-			os.Chdir("..")
-			wd, _ = os.Getwd()
-		}
-		if wd == "/" {
-			log.Fatal("run", "no gopmfile in the directory or parent directory")
-		}
-		argss := gf.MustValue("run", "cmd")
-		if localGopath == "" {
-			log.Fatal("run", "No local GOPATH set")
-		}
-		args := strings.Split(argss, " ")
-		argsLen := len(args)
-		for i := 0; i < argsLen; i++ {
-			strings.Trim(args[i], " ")
-		}
-		if len(args) < 2 {
-			log.Fatal("run", "cmd arguments less than 2")
-		}
-		if err = execCmd(localGopath, localGopath, args...); err != nil {
-			log.Error("run", "Fail to run program:")
-			log.Fatal("", "\t"+err.Error())
-		}
-		return
+	os.RemoveAll(setting.DefaultVendor)
+	if !setting.Debug {
+		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
-	os.RemoveAll(doc.VENDOR)
-	if !setting.Debug {
-		defer os.RemoveAll(doc.VENDOR)
-	}
-	// Run command with gopm repos context
-	// need version control , auto link to GOPATH/src repos
-	_, newGopath, newCurPath, err := genNewGopath(ctx, false)
-	if err != nil {
+	if err := linkVendors(ctx); err != nil {
 		errors.SetError(err)
 		return
 	}
 
-	log.Trace("Running...")
+	log.Info("Running...")
 
 	cmdArgs := []string{"go", "run"}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
-	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Fail to run program: %v", err))
-			return
-		}
-		log.Error("run", "Fail to run program:")
-		log.Fatal("", "\t"+err.Error())
+	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
+		errors.SetError(fmt.Errorf("fail to run program: %v", err))
+		return
 	}
 
-	log.Success("SUCC", "run", "Command executed successfully!")
+	log.Info("Command executed successfully!")
 }

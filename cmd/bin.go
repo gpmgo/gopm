@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -22,9 +22,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Unknwon/com"
-	"github.com/codegangsta/cli"
-
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/doc"
 	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
@@ -44,10 +43,10 @@ Can only specify one each time, and only works for projects that
 contain main package`,
 	Action: runBin,
 	Flags: []cli.Flag{
-		cli.StringFlag{"dir, d", "./", "build binary to given directory"},
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any"},
-		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.StringFlag{"dir, d", "./", "build binary to given directory", ""},
+		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
+		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
@@ -58,23 +57,14 @@ func runBin(ctx *cli.Context) {
 	}
 
 	if len(ctx.Args()) != 1 {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
-			return
-		}
-		log.Error("bin", "Incorrect number of arguments for command")
-		log.Error("", "\tshould have 1")
-		log.Help("Try 'gopm help bin' to get more information")
+		errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+		return
 	}
 
 	// Check if given directory exists if specified.
-	if ctx.IsSet("dir") && !com.IsDir(ctx.String("dir")) {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Indicated path does not exist or not a directory"))
-			return
-		}
-		log.Error("bin", "Cannot start command:")
-		log.Fatal("", "\tIndicated path does not exist or not a directory")
+	if ctx.IsSet("dir") && !base.IsDir(ctx.String("dir")) {
+		errors.SetError(fmt.Errorf("Indicated path does not exist or not a directory"))
+		return
 	}
 
 	// Parse package version.
@@ -93,7 +83,11 @@ func runBin(ctx *cli.Context) {
 
 	// Check package name.
 	if !strings.Contains(pkgPath, "/") {
-		tmpPath := setting.GetPkgFullPath(pkgPath)
+		tmpPath, err := setting.GetPkgFullPath(pkgPath)
+		if err != nil {
+			errors.SetError(err)
+			return
+		}
 		if tmpPath != pkgPath {
 			n = doc.NewNode(tmpPath, n.Type, n.Value, n.IsGetDeps)
 		}
@@ -106,32 +100,27 @@ func runBin(ctx *cli.Context) {
 
 	// Check if previous steps were successful.
 	if !n.IsExist() {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Download steps weren't successful"))
-			return
-		}
-		log.Error("bin", "Cannot continue command:")
-		log.Fatal("", "\tDownload steps weren't successful")
+		errors.SetError(fmt.Errorf("Download steps weren't successful"))
+		return
 	}
 
-	buildPath := path.Join(setting.InstallRepoPath, n.ImportPath)
-	oldWorkDir := setting.WorkDir
-	// Change to repository path.
-	log.Log("Changing work directory to %s", buildPath)
-	if err := os.Chdir(buildPath); err != nil {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Fail to change work directory: %v", err))
-			return
-		}
-		log.Error("bin", "Fail to change work directory:")
-		log.Fatal("", "\t"+err.Error())
-	}
-	setting.WorkDir = buildPath
-
+	tmpVendor := path.Join("vendor", path.Base(n.RootPath))
+	os.RemoveAll(tmpVendor)
+	os.RemoveAll(setting.VENDOR)
 	// TODO: should use .gopm/temp path.
-	os.RemoveAll(path.Join(buildPath, doc.VENDOR))
+	if err := autoLink(n.InstallPath, tmpVendor); err != nil {
+		errors.SetError(fmt.Errorf("Fail to link slef: %v", err))
+		return
+	}
+	os.Chdir(tmpVendor)
+	oldWorkDir := setting.WorkDir
+	setting.WorkDir = path.Join(setting.WorkDir, tmpVendor)
 	if !setting.Debug {
-		defer os.RemoveAll(path.Join(buildPath, doc.VENDOR))
+		defer func() {
+			os.Chdir(oldWorkDir)
+			os.RemoveAll("vendor")
+			os.RemoveAll(setting.VENDOR)
+		}()
 	}
 
 	if err := buildBinary(ctx); err != nil {
@@ -139,13 +128,10 @@ func runBin(ctx *cli.Context) {
 		return
 	}
 
-	gf, target, _, err := genGopmfile(ctx)
+	gf, target, err := parseGopmfile(setting.GOPMFILE)
 	if err != nil {
 		errors.SetError(err)
 		return
-	}
-	if target == "." {
-		_, target = filepath.Split(setting.WorkDir)
 	}
 
 	// Because build command moved binary to root path.
@@ -153,14 +139,9 @@ func runBin(ctx *cli.Context) {
 	if runtime.GOOS == "windows" {
 		binName += ".exe"
 	}
-	if !com.IsFile(binName) {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Previous steps weren't successful or the project does not contain main package"))
-			return
-		}
-		log.Error("bin", "Binary does not exist:")
-		log.Error("", "\t"+binName)
-		log.Fatal("", "\tPrevious steps weren't successful or the project does not contain main package")
+	if !base.IsFile(binName) {
+		errors.SetError(fmt.Errorf("Previous steps weren't successful or the project does not contain main package"))
+		return
 	}
 
 	// Move binary to given directory.
@@ -171,44 +152,32 @@ func runBin(ctx *cli.Context) {
 		movePath = path.Join(runtime.GOROOT(), "pkg/tool", runtime.GOOS+"_"+runtime.GOARCH)
 	}
 
-	if com.IsExist(movePath + "/" + binName) {
-		if err := os.Remove(movePath + "/" + binName); err != nil {
-			log.Warn("Cannot remove binary in work directory:")
-			log.Warn("\t %s", err)
+	if base.IsExist(path.Join(movePath, binName)) {
+		if err := os.Remove(path.Join(movePath, binName)); err != nil {
+			log.Warn("Cannot remove binary in work directory: %v", err)
 		}
 	}
 
 	if err := os.Rename(binName, movePath+"/"+binName); err != nil {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Fail to move binary: %v", err))
-			return
-		}
-		log.Error("bin", "Fail to move binary:")
-		log.Fatal("", "\t"+err.Error())
+		errors.SetError(fmt.Errorf("Fail to move binary: %v", err))
+		return
 	}
 	os.Chmod(movePath+"/"+binName, os.ModePerm)
 
 	includes := strings.Split(gf.MustValue("res", "include"), "|")
 	if len(includes) > 0 {
-		log.Log("Copying resources to %s", movePath)
+		log.Info("Copying resources to %s", movePath)
 		for _, include := range includes {
-			if com.IsDir(include) {
+			if base.IsDir(include) {
 				os.RemoveAll(path.Join(movePath, include))
-				if err := com.CopyDir(include, filepath.Join(movePath, include)); err != nil {
-					if setting.LibraryMode {
-						errors.AppendError(errors.NewErrCopyResource(include))
-					} else {
-						log.Error("bin", "Fail to copy following resource:")
-						log.Error("", "\t"+include)
-					}
+				if err := base.CopyDir(include, filepath.Join(movePath, include)); err != nil {
+					errors.AppendError(errors.NewErrCopyResource(include))
 				}
 			}
 		}
 	}
 
-	log.Log("Changing work directory back to %s", oldWorkDir)
-	os.Chdir(oldWorkDir)
-
-	log.Success("SUCC", "bin", "Command executed successfully!")
+	log.Info("Command executed successfully!")
 	fmt.Println("Binary has been built into: " + movePath)
+	os.Exit(0) // FIXME: I don't what the hack is going on when delete this line.
 }

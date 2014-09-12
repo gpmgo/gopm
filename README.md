@@ -23,13 +23,13 @@ USAGE:
    Gopm [global options] command [command options] [arguments...]
 
 VERSION:
-   0.7.1.0613 Beta
+   0.8.0.0912 Beta
 
 COMMANDS:
-   bin		download and link dependencies and build binary
+   list		list all dependencies of current project
    gen		generate a gopmfile for current Go project
    get		fetch remote package(s) and dependencies
-   list		list all dependencies of current project
+   bin		download and link dependencies and build binary
    config	configurate gopm settings
    run		link dependencies and go run
    test		link dependencies and go test
@@ -43,8 +43,8 @@ GLOBAL OPTIONS:
    --noterm, -n		disable color output
    --strict, -s		strict mode
    --debug, -d		debug mode
-   --version, -v	print the version
    --help, -h		show help
+   --version, -v	print the version
 ```
 
 ## License

@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -15,6 +15,7 @@
 package doc
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -24,10 +25,11 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
-	"github.com/Unknwon/com"
-	"github.com/codegangsta/cli"
-
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cae/zip"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -41,13 +43,12 @@ type service struct {
 
 // services is the list of source code control services handled by gopm.
 var services = []*service{
-	{githubPattern, "github.com/", getGithubPkg},
-	{googlePattern, "code.google.com/", getGooglePkg},
-	{bitbucketPattern, "bitbucket.org/", getBitbucketPkg},
-	{oscPattern, "git.oschina.net/", getOscPkg},
-	{gitcafePattern, "gitcafe.com/", getGitcafePkg},
-	{launchpadPattern, "launchpad.net/", getLaunchpadPkg},
-	{gopmPattern, "gopm.io/", getGopmPkg},
+// {githubPattern, "github.com/", getGithubPkg},
+// {googlePattern, "code.google.com/", getGooglePkg},
+// {bitbucketPattern, "bitbucket.org/", getBitbucketPkg},
+// {oscPattern, "git.oschina.net/", getOscPkg},
+// {gitcafePattern, "gitcafe.com/", getGitcafePkg},
+// {launchpadPattern, "launchpad.net/", getLaunchpadPkg},
 }
 
 type RevisionType string
@@ -99,7 +100,14 @@ func (pkg *Pkg) ValSuffix() string {
 	if len(pkg.Value) > 0 {
 		return "." + pkg.Value
 	}
-	return pkg.Value
+	return ""
+}
+
+func (pkg *Pkg) VerSuffix() string {
+	if len(pkg.Value) > 0 {
+		return " @ " + string(pkg.Type) + ":" + pkg.Value
+	}
+	return ""
 }
 
 // A Node represents a node object to be fetched from remote.
@@ -137,12 +145,12 @@ func NewNode(
 
 // IsExist returns true if package exists in local repository.
 func (n *Node) IsExist() bool {
-	return com.IsExist(n.InstallPath)
+	return base.IsExist(n.InstallPath)
 }
 
 // IsExistGopath returns true if package exists in GOPATH.
 func (n *Node) IsExistGopath() bool {
-	return com.IsExist(n.InstallGopath)
+	return base.IsExist(n.InstallGopath)
 }
 
 func (n *Node) ValString() string {
@@ -167,14 +175,14 @@ func (n *Node) CopyToGopath() error {
 	}
 
 	os.RemoveAll(n.InstallGopath)
-	if err := com.CopyDir(n.InstallPath, n.InstallGopath); err != nil {
+	if err := base.CopyDir(n.InstallPath, n.InstallGopath); err != nil {
 		if setting.LibraryMode {
 			return fmt.Errorf("Fail to copy to GOPATH: %v", err)
 		}
 		log.Error("", "Fail to copy to GOPATH:")
 		log.Fatal("", "\t"+err.Error())
 	}
-	log.Log("Package copied to GOPATH: %s", n.RootPath)
+	log.Info("Package copied to GOPATH: %s", n.RootPath)
 	return nil
 }
 
@@ -182,7 +190,7 @@ func (n *Node) CopyToGopath() error {
 func (n *Node) UpdateByVcs(vcs string) error {
 	switch vcs {
 	case "git":
-		branch, stderr, err := com.ExecCmdDir(n.InstallGopath,
+		branch, stderr, err := base.ExecCmdDir(n.InstallGopath,
 			"git", "rev-parse", "--abbrev-ref", "HEAD")
 		if err != nil {
 			log.Error("", "Error occurs when 'git rev-parse --abbrev-ref HEAD'")
@@ -191,7 +199,7 @@ func (n *Node) UpdateByVcs(vcs string) error {
 		}
 		branch = strings.TrimSpace(branch)
 
-		_, stderr, err = com.ExecCmdDir(n.InstallGopath,
+		_, stderr, err = base.ExecCmdDir(n.InstallGopath,
 			"git", "pull", "origin", branch)
 		if err != nil {
 			log.Error("", "Error occurs when 'git pull origin "+branch+"'")
@@ -199,7 +207,7 @@ func (n *Node) UpdateByVcs(vcs string) error {
 			return errors.New(stderr)
 		}
 	case "hg":
-		_, stderr, err := com.ExecCmdDir(n.InstallGopath,
+		_, stderr, err := base.ExecCmdDir(n.InstallGopath,
 			"hg", "pull")
 		if err != nil {
 			log.Error("", "Error occurs when 'hg pull'")
@@ -207,7 +215,7 @@ func (n *Node) UpdateByVcs(vcs string) error {
 			return errors.New(stderr)
 		}
 
-		_, stderr, err = com.ExecCmdDir(n.InstallGopath,
+		_, stderr, err = base.ExecCmdDir(n.InstallGopath,
 			"hg", "up")
 		if err != nil {
 			log.Error("", "Error occurs when 'hg up'")
@@ -215,7 +223,7 @@ func (n *Node) UpdateByVcs(vcs string) error {
 			return errors.New(stderr)
 		}
 	case "svn":
-		_, stderr, err := com.ExecCmdDir(n.InstallGopath,
+		_, stderr, err := base.ExecCmdDir(n.InstallGopath,
 			"svn", "update")
 		if err != nil {
 			log.Error("", "Error occurs when 'svn update'")
@@ -266,7 +274,7 @@ metaScan:
 				continue metaScan
 			}
 			if match != nil {
-				return nil, com.NotFoundError{"More than one <meta> found at " + scheme + "://" + importPath}
+				return nil, fmt.Errorf("more than one <meta> found at %s://%s", scheme, importPath)
 			}
 
 			projectRoot, vcs, repo := f[0], f[1], f[2]
@@ -274,7 +282,7 @@ metaScan:
 			repo = strings.TrimSuffix(repo, "."+vcs)
 			i := strings.Index(repo, "://")
 			if i < 0 {
-				return nil, com.NotFoundError{"Bad repo URL in <meta>."}
+				return nil, fmt.Errorf("bad repo URL in <meta>")
 			}
 			proto := repo[:i]
 			repo = repo[i+len("://"):]
@@ -297,7 +305,7 @@ metaScan:
 		}
 	}
 	if match == nil {
-		return nil, com.NotFoundError{"<meta> not found."}
+		return nil, fmt.Errorf("<meta> not found")
 	}
 	return match, nil
 }
@@ -319,7 +327,7 @@ func fetchMeta(client *http.Client, importPath string) (map[string]string, error
 		scheme = "http"
 		resp, err = client.Get(scheme + "://" + uri)
 		if err != nil {
-			return nil, &com.RemoteError{strings.SplitN(importPath, "/", 2)[0], err}
+			return nil, fmt.Errorf("fail to make request(%s): %v", strings.SplitN(importPath, "/", 2)[0], err)
 		}
 	}
 	defer resp.Body.Close()
@@ -338,11 +346,11 @@ func (n *Node) getDynamic(client *http.Client, ctx *cli.Context) ([]string, erro
 			return nil, err
 		}
 		if rootMatch["projectRoot"] != match["projectRoot"] {
-			return nil, com.NotFoundError{"Project root mismatch."}
+			return nil, fmt.Errorf("project root mismatch")
 		}
 	}
 
-	n.DownloadURL = com.Expand("{repo}{dir}", match)
+	n.DownloadURL = base.Expand("{repo}{dir}", match)
 	return n.Download(ctx)
 }
 
@@ -375,6 +383,73 @@ func (n *Node) Download(ctx *cli.Context) ([]string, error) {
 		return nil, errors.New("Didn't find any match service")
 	}
 
-	log.Log("Cannot match any service, getting dynamic...")
+	log.Info("Cannot match any service, getting dynamic...")
 	return n.getDynamic(HttpClient, ctx)
+}
+
+type ApiError struct {
+	Error string `json:"error"`
+}
+
+func init() {
+	zip.Verbose = false
+}
+
+// DownloadGopm downloads remote package from gopm registry.
+func (n *Node) DownloadGopm(ctx *cli.Context) error {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s?pkgname=%s&revision=%s",
+		setting.RegistryUrl, setting.URL_API_DOWNLOAD, n.RootPath, n.Value), nil)
+	if err != nil {
+		return fmt.Errorf("fail to new request: %v", err)
+	}
+	req.Header.Set("User-Agent", base.UserAgent)
+	resp, err := HttpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("fail to make request: %v", err)
+	}
+	if resp.StatusCode != 200 {
+		var apiErr ApiError
+		if err = json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
+			return fmt.Errorf("fail to decode response JSON: %v", err)
+		}
+		return errors.New(apiErr.Error)
+	}
+
+	tmpPath := path.Join(setting.HomeDir, ".gopm/temp/archive",
+		n.RootPath+"-"+base.ToStr(time.Now().Nanosecond())+".zip")
+	defer os.Remove(tmpPath)
+	if setting.Debug {
+		log.Debug("Temp archive path: %s", tmpPath)
+	}
+
+	os.MkdirAll(path.Dir(tmpPath), os.ModePerm)
+	fw, err := os.Create(tmpPath)
+	if err != nil {
+		return err
+	}
+	defer fw.Close()
+	if _, err = io.Copy(fw, resp.Body); err != nil {
+		return fmt.Errorf("fail to save archive: %v", err)
+	}
+
+	// Remove old files.
+	os.RemoveAll(n.InstallPath)
+	os.MkdirAll(path.Dir(n.InstallPath), os.ModePerm)
+
+	var rootDir string
+	var extractFn = func(fullName string, fi os.FileInfo) error {
+		if len(rootDir) == 0 {
+			rootDir = strings.Split(fullName, "/")[0]
+		}
+		return nil
+	}
+
+	if err := zip.ExtractToFunc(tmpPath, path.Dir(n.InstallPath), extractFn); err != nil {
+		return fmt.Errorf("fail to extract archive: %v", err)
+	} else if err = os.Rename(path.Join(path.Dir(n.InstallPath), rootDir),
+		n.InstallPath); err != nil {
+		return fmt.Errorf("fail to rename directory: %v", err)
+	}
+	// fmt.Println(rootDir)
+	return nil
 }

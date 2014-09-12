@@ -14,21 +14,20 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-// Package gopm is a library form of Gopm(Go Package Manager).
-package gopm
+// Package lib is a library version of Gopm(Go Package Manager).
+package lib
 
 import (
 	"io"
 	"runtime"
 
-	"github.com/codegangsta/cli"
-
 	"github.com/gpmgo/gopm/cmd"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
 
-const APP_VER = "0.7.2.0727 Beta"
+const APP_VER = "0.8.0.0912 Beta"
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -41,23 +40,23 @@ func Run(args []string) *setting.Error {
 	app.Usage = "Go Package Manager"
 	app.Version = APP_VER
 	app.Commands = []cli.Command{
-		// cmd.CmdBin,
-		// cmd.CmdGen,
+		cmd.CmdList,
+		cmd.CmdGen,
 		cmd.CmdGet,
-		// cmd.CmdList,
-		// cmd.CmdConfig,
-		// cmd.CmdRun,
-		// cmd.CmdTest,
-		// cmd.CmdBuild,
-		// cmd.CmdInstall,
-		// cmd.CmdClean,
-		// cmd.CmdUpdate,
+		cmd.CmdBin,
+		cmd.CmdConfig,
+		cmd.CmdRun,
+		cmd.CmdTest,
+		cmd.CmdBuild,
+		cmd.CmdInstall,
+		cmd.CmdClean,
+		cmd.CmdUpdate,
 		// CmdSearch,
 	}
 	app.Flags = append(app.Flags, []cli.Flag{
-		cli.BoolFlag{"noterm, n", "disable color output"},
-		cli.BoolFlag{"strict, s", "strict mode"},
-		cli.BoolFlag{"debug, d", "debug mode"},
+		cli.BoolFlag{"noterm, n", "disable color output", ""},
+		cli.BoolFlag{"strict, s", "strict mode", ""},
+		cli.BoolFlag{"debug, d", "debug mode", ""},
 	}...)
 	app.Run(args)
 	return setting.RuntimeError

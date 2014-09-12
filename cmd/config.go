@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -17,10 +17,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/codegangsta/cli"
-
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/errors"
-	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
 
@@ -35,7 +33,7 @@ gopm config github [client_id] [client_secret]
 	Action:      runConfig,
 	Subcommands: configCommands,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
@@ -97,13 +95,8 @@ func runConfigGet(ctx *cli.Context) {
 	}
 
 	if len(ctx.Args()) != 1 {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
-			return
-		}
-		log.Error("config", "Incorrect number of arguments for command")
-		log.Error("", "\t'get' should have 1")
-		log.Help("Try 'gopm config get -h' to get more information")
+		errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+		return
 	}
 	switch ctx.Args().First() {
 	case "proxy":
@@ -118,26 +111,29 @@ func runConfigGet(ctx *cli.Context) {
 
 func runConfigUnset(ctx *cli.Context) {
 	if err := setup(ctx); err != nil {
-		setting.RuntimeError.HasError = true
-		setting.RuntimeError.Fatal = err
+		errors.SetError(err)
 		return
 	}
 
 	if len(ctx.Args()) != 1 {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
-			return
-		}
-		log.Error("config", "Incorrect number of arguments for command")
-		log.Error("", "\t'unset' should have 1")
-		log.Help("Try 'gopm config unset -h' to get more information")
+		errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+		return
 	}
+
+	var err error
 	switch ctx.Args().First() {
 	case "proxy":
-		setting.DeleteConfigOption("settings", "HTTP_PROXY")
+		err = setting.DeleteConfigOption("settings", "HTTP_PROXY")
 	case "github":
-		setting.DeleteConfigOption("github", "CLIENT_ID")
-		setting.DeleteConfigOption("github", "CLIENT_SECRET")
+		if err = setting.DeleteConfigOption("github", "CLIENT_ID"); err != nil {
+			errors.SetError(err)
+			return
+		}
+		err = setting.DeleteConfigOption("github", "CLIENT_SECRET")
+	}
+	if err != nil {
+		errors.SetError(err)
+		return
 	}
 }
 
@@ -148,15 +144,13 @@ func runConfigSetProxy(ctx *cli.Context) {
 	}
 
 	if len(ctx.Args()) != 1 {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
-			return
-		}
-		log.Error("config", "Incorrect number of arguments for command")
-		log.Error("", "\t'set proxy' should have 1")
-		log.Help("Try 'gopm config set help proxy' to get more information")
+		errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 1"))
+		return
 	}
-	setting.SetConfigValue("settings", "HTTP_PROXY", ctx.Args().First())
+	if err := setting.SetConfigValue("settings", "HTTP_PROXY", ctx.Args().First()); err != nil {
+		errors.SetError(err)
+		return
+	}
 }
 
 func runConfigSetGitHub(ctx *cli.Context) {
@@ -166,14 +160,15 @@ func runConfigSetGitHub(ctx *cli.Context) {
 	}
 
 	if len(ctx.Args()) != 2 {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 2"))
-			return
-		}
-		log.Error("config", "Incorrect number of arguments for command")
-		log.Error("", "\t'set github' should have 2")
-		log.Help("Try 'gopm config set help github' to get more information")
+		errors.SetError(fmt.Errorf("Incorrect number of arguments for command: should have 2"))
+		return
 	}
-	setting.SetConfigValue("github", "CLIENT_ID", ctx.Args().First())
-	setting.SetConfigValue("github", "CLIENT_SECRET", ctx.Args().Get(1))
+	if err := setting.SetConfigValue("github", "CLIENT_ID", ctx.Args().First()); err != nil {
+		errors.SetError(err)
+		return
+	}
+	if err := setting.SetConfigValue("github", "CLIENT_SECRET", ctx.Args().Get(1)); err != nil {
+		errors.SetError(err)
+		return
+	}
 }

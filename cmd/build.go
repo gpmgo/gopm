@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -19,10 +19,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/Unknwon/com"
-	"github.com/codegangsta/cli"
-
-	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
@@ -37,42 +35,38 @@ and execute 'go build'
 gopm build <go build commands>`,
 	Action: runBuild,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any"},
-		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
+		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
 func buildBinary(ctx *cli.Context, args ...string) error {
-	target, newGopath, newCurPath, err := genNewGopath(ctx, false)
+	_, target, err := parseGopmfile(setting.GOPMFILE)
 	if err != nil {
 		return err
 	}
 
-	log.Trace("Building...")
+	if err := linkVendors(ctx); err != nil {
+		return err
+	}
+
+	log.Info("Building...")
 
 	cmdArgs := []string{"go", "build"}
-	cmdArgs = append(cmdArgs, args...)
-	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
-		if setting.LibraryMode {
-			return fmt.Errorf("Fail to build program: %v", err)
-		}
-		log.Error("build", "Fail to build program:")
-		log.Fatal("", "\t"+err.Error())
+	cmdArgs = append(cmdArgs, ctx.Args()...)
+	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
+		return fmt.Errorf("fail to build program: %v", err)
 	}
 
 	if setting.IsWindowsXP {
 		fName := path.Base(target)
 		binName := fName + ".exe"
 		os.Remove(binName)
-		exePath := path.Join(newCurPath, doc.VENDOR, "src", target, binName)
-		if com.IsFile(exePath) {
-			if err := os.Rename(exePath, path.Join(newCurPath, binName)); err != nil {
-				if setting.LibraryMode {
-					return fmt.Errorf("Fail to move binary: %v", err)
-				}
-				log.Error("build", "Fail to move binary:")
-				log.Fatal("", "\t"+err.Error())
+		exePath := path.Join(setting.DefaultVendorSrc, target, binName)
+		if base.IsFile(exePath) {
+			if err := os.Rename(exePath, path.Join(setting.WorkDir, binName)); err != nil {
+				return fmt.Errorf("fail to move binary: %v", err)
 			}
 		} else {
 			log.Warn("No binary generated")
@@ -87,14 +81,14 @@ func runBuild(ctx *cli.Context) {
 		return
 	}
 
-	os.RemoveAll(doc.VENDOR)
+	os.RemoveAll(setting.DefaultVendor)
 	if !setting.Debug {
-		defer os.RemoveAll(doc.VENDOR)
+		defer os.RemoveAll(setting.DefaultVendor)
 	}
 	if err := buildBinary(ctx, ctx.Args()...); err != nil {
 		errors.SetError(err)
 		return
 	}
 
-	log.Success("SUCC", "build", "Command executed successfully!")
+	log.Info("Command executed successfully!")
 }

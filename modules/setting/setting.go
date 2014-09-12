@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -21,17 +21,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/Unknwon/com"
-	"github.com/Unknwon/goconfig"
-
-	"github.com/gpmgo/gopm/modules/log"
-)
-
-const (
-	GOPMFILE = ".gopmfile"
-	VERINFO  = "data/VERSION.json"
-
-	VERSION = 201406081
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/goconfig"
 )
 
 type Error struct {
@@ -40,30 +31,51 @@ type Error struct {
 	Errors   []error
 }
 
+type Option struct {
+}
+
+const (
+	VERSION     = 201406081
+	VENDOR      = ".vendor"
+	GOPMFILE    = ".gopmfile"
+	PKGNAMELIST = "pkgname.list"
+	VERINFO     = "data/VERSION.json"
+)
+
+const (
+	URL_API_DOWNLOAD = "/api/v1/download"
+)
+
 var (
-	Debug bool
+	// Global variables.
+	HomeDir          string
+	WorkDir          string // The path of gopm was executed.
+	PkgNameListFile  string
+	LocalNodesFile   string
+	DefaultVendor    string
+	DefaultVendorSrc string
+	InstallRepoPath  string // The gopm local repository.
+	InstallGopath    string
+	HttpProxy        string
+	RegistryUrl      string = "http://gopm.io"
 
-	HomeDir         string
-	WorkDir         string // The path of gopm was executed.
-	InstallRepoPath string // The gopm local repository.
-	InstallGopath   string
+	// System settings.
+	IsWindows        bool
+	IsWindowsXP      bool
+	HasGOPATHSetting bool
 
-	GopmTempPath string
+	// Global settings.
+	Debug        bool
+	LibraryMode  bool
+	RuntimeError = new(Error)
 
-	LocalNodesFile string
-	LocalNodes     *goconfig.ConfigFile
-
-	PkgNamesFile    string
+	// Configuration settings.
+	ConfigFile      string
+	Cfg             *goconfig.ConfigFile
 	PackageNameList = make(map[string]string)
+	LocalNodes      *goconfig.ConfigFile
 
-	ConfigFile string
-	Cfg        *goconfig.ConfigFile
-
-	IsWindows   bool
-	IsWindowsXP bool
-
-	LibraryMode   bool
-	RuntimeError  = new(Error)
+	// TODO: configurable.
 	RootPathPairs = map[string]int{
 		"github.com":      3,
 		"code.google.com": 3,
@@ -72,51 +84,76 @@ var (
 		"gitcafe.com":     3,
 		"launchpad.net":   2,
 		"labix.org":       3,
-		"gopm.io":         3,
 	}
 	CommonRes = []string{"views", "templates", "static", "public", "conf"}
 )
 
-func LoadLocalNodes() (err error) {
-	if !com.IsFile(LocalNodesFile) {
-		os.MkdirAll(path.Dir(LocalNodesFile), os.ModePerm)
-		os.Create(LocalNodesFile)
+// LoadGopmfile loads and returns given gopmfile.
+func LoadGopmfile(fileName string) (*goconfig.ConfigFile, error) {
+	if !base.IsFile(fileName) {
+		return goconfig.LoadFromData([]byte(""))
 	}
 
-	LocalNodes, err = goconfig.LoadConfigFile(LocalNodesFile)
+	gf, err := goconfig.LoadConfigFile(fileName)
 	if err != nil {
-		if LibraryMode {
-			return fmt.Errorf("Fail to load localnodes.list: %v", err)
-		}
-		log.Error("", "Fail to load localnodes.list:")
-		log.Fatal("", "\t"+err.Error())
+		return nil, fmt.Errorf("Fail to load gopmfile: %v", err)
+	}
+	return gf, nil
+}
+
+// SaveGopmfile saves gopmfile to given path.
+func SaveGopmfile(gf *goconfig.ConfigFile, fileName string) error {
+	if err := goconfig.SaveConfigFile(gf, fileName); err != nil {
+		return fmt.Errorf("Fail to save gopmfile: %v", err)
 	}
 	return nil
 }
 
-func SaveLocalNodes() error {
-	if err := goconfig.SaveConfigFile(LocalNodes, LocalNodesFile); err != nil {
-		if LibraryMode {
-			return fmt.Errorf("Fail to save localnodes.list: %v", err)
+// LoadConfig loads gopm global configuration.
+func LoadConfig() (err error) {
+	if !base.IsExist(ConfigFile) {
+		os.MkdirAll(path.Dir(ConfigFile), os.ModePerm)
+		if _, err = os.Create(ConfigFile); err != nil {
+			return fmt.Errorf("fail to create config file: %v", err)
 		}
-		log.Error("", "Fail to save localnodes.list:")
-		log.Error("", "\t"+err.Error())
+	}
+
+	Cfg, err = goconfig.LoadConfigFile(ConfigFile)
+	if err != nil {
+		return fmt.Errorf("fail to load config file: %v", err)
+	}
+
+	HttpProxy = Cfg.MustValue("settings", "HTTP_PROXY")
+	return nil
+}
+
+// SetConfigValue sets and saves gopm configuration.
+func SetConfigValue(section, key, val string) error {
+	Cfg.SetValue(section, key, val)
+	if err := goconfig.SaveConfigFile(Cfg, ConfigFile); err != nil {
+		return fmt.Errorf("fail to set config value(%s:%s=%s): %v", section, key, val, err)
 	}
 	return nil
 }
 
+// DeleteConfigOption deletes and saves gopm configuration.
+func DeleteConfigOption(section, key string) error {
+	Cfg.DeleteKey(section, key)
+	if err := goconfig.SaveConfigFile(Cfg, ConfigFile); err != nil {
+		return fmt.Errorf("fail to delete config key(%s:%s): %v", section, key, err)
+	}
+	return nil
+}
+
+// LoadPkgNameList loads package name pairs.
 func LoadPkgNameList() error {
-	if !com.IsFile(PkgNamesFile) {
+	if !base.IsFile(PkgNameListFile) {
 		return nil
 	}
 
-	data, err := ioutil.ReadFile(PkgNamesFile)
+	data, err := ioutil.ReadFile(PkgNameListFile)
 	if err != nil {
-		if LibraryMode {
-			return fmt.Errorf("Fail to load pkgname.list: %v", err)
-		}
-		log.Error("", "Fail to load pkgname.list:")
-		log.Fatal("", "\t"+err.Error())
+		return fmt.Errorf("fail to load package name list: %v", err)
 	}
 
 	pkgs := strings.Split(string(data), "\n")
@@ -127,68 +164,38 @@ func LoadPkgNameList() error {
 			if i == len(pkgs)-1 {
 				continue
 			}
-			if LibraryMode {
-				return fmt.Errorf("Fail to parse package name: %v", line)
-			}
-			log.Error("", "Fail to parse package name: "+line)
-			log.Fatal("", "Invalid package information")
+			return fmt.Errorf("fail to parse package name: %v", line)
 		}
 		PackageNameList[strings.TrimSpace(infos[0])] = strings.TrimSpace(infos[1])
 	}
 	return nil
 }
 
-func GetPkgFullPath(short string) string {
+// GetPkgFullPath attmpts to get full path by given package short name.
+func GetPkgFullPath(short string) (string, error) {
 	name, ok := PackageNameList[short]
 	if !ok {
-		log.Error("", "Invalid package name")
-		log.Error("", "It's not a invalid import path and no match in the package name list:")
-		log.Fatal("", "\t"+short)
+		return "", fmt.Errorf("no match package import path with given short name: %s", short)
 	}
-	return name
+	return name, nil
 }
 
-var (
-	HttpProxy string
-)
-
-func LoadConfig() error {
-	var err error
-	if !com.IsExist(ConfigFile) {
-		os.MkdirAll(path.Dir(ConfigFile), os.ModePerm)
-		if _, err = os.Create(ConfigFile); err != nil {
-			if LibraryMode {
-				return fmt.Errorf("Fail to create gopm config file: %v", err)
-			}
-			log.Error("", "Fail to create gopm config file:")
-			log.Fatal("", "\t"+err.Error())
-		}
+func LoadLocalNodes() (err error) {
+	if !base.IsFile(LocalNodesFile) {
+		os.MkdirAll(path.Dir(LocalNodesFile), os.ModePerm)
+		os.Create(LocalNodesFile)
 	}
-	Cfg, err = goconfig.LoadConfigFile(ConfigFile)
+
+	LocalNodes, err = goconfig.LoadConfigFile(LocalNodesFile)
 	if err != nil {
-		if LibraryMode {
-			return fmt.Errorf("Fail to load gopm config file: %v", err)
-		}
-		log.Error("", "Fail to load gopm config file")
-		log.Fatal("", "\t"+err.Error())
+		return fmt.Errorf("fail to load localnodes.list: %v", err)
 	}
-
-	HttpProxy = Cfg.MustValue("settings", "HTTP_PROXY")
 	return nil
 }
 
-func SetConfigValue(section, key, val string) {
-	Cfg.SetValue(section, key, val)
-	if err := goconfig.SaveConfigFile(Cfg, ConfigFile); err != nil {
-		log.Error("", "Fail to save gopm config file:")
-		log.Fatal("", "\t"+err.Error())
+func SaveLocalNodes() error {
+	if err := goconfig.SaveConfigFile(LocalNodes, LocalNodesFile); err != nil {
+		return fmt.Errorf("fail to save localnodes.list: %v", err)
 	}
-}
-
-func DeleteConfigOption(section, key string) {
-	Cfg.DeleteKey(section, key)
-	if err := goconfig.SaveConfigFile(Cfg, ConfigFile); err != nil {
-		log.Error("", "Fail to save gopm config file:")
-		log.Fatal("", "\t"+err.Error())
-	}
+	return nil
 }

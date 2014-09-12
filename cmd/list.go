@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -16,14 +16,19 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"path/filepath"
 	"sort"
+	"strings"
 
-	"github.com/Unknwon/com"
-	"github.com/Unknwon/goconfig"
-	"github.com/codegangsta/cli"
-
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/doc"
 	"github.com/gpmgo/gopm/modules/errors"
+	"github.com/gpmgo/gopm/modules/goconfig"
+	"github.com/gpmgo/gopm/modules/log"
+	"github.com/gpmgo/gopm/modules/setting"
 )
 
 var CmdList = cli.Command{
@@ -36,8 +41,21 @@ gopm list
 Make sure you run this command in the root path of a go project.`,
 	Action: runList,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"test, t", "show test imports", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
+}
+
+func parseGopmfile(fileName string) (*goconfig.ConfigFile, string, error) {
+	gf, err := setting.LoadGopmfile(fileName)
+	if err != nil {
+		return nil, "", err
+	}
+	target := doc.ParseTarget(gf.MustValue("target", "path"))
+	if target == "." {
+		_, target = filepath.Split(setting.WorkDir)
+	}
+	return gf, target, nil
 }
 
 func verSuffix(gf *goconfig.ConfigFile, name string) string {
@@ -48,29 +66,69 @@ func verSuffix(gf *goconfig.ConfigFile, name string) string {
 	return val
 }
 
+// getDepList get list of dependencies in root path format and nature order.
+func getDepList(ctx *cli.Context, target, pkgPath, vendor, suffix string) ([]string, error) {
+	vendorSrc := path.Join(vendor, "src")
+	rootPath := doc.GetRootPath(target)
+	// If work directory is not in GOPATH, then need to setup a vendor path.
+	if !setting.HasGOPATHSetting || !strings.HasPrefix(pkgPath, setting.InstallGopath) {
+		os.RemoveAll(vendorSrc)
+		if !setting.Debug {
+			defer os.RemoveAll(vendor)
+		}
+
+		// Make link of self.
+		log.Debug("Linking %s...", rootPath)
+		from := path.Join(strings.TrimSuffix(pkgPath, target+suffix), rootPath) + suffix
+		to := path.Join(vendorSrc, rootPath)
+		if setting.Debug {
+			log.Debug("Linking from %s to %s", from, to)
+		}
+		if err := autoLink(from, to); err != nil {
+			return nil, err
+		}
+	}
+
+	imports, err := doc.ListImports(target, rootPath, vendor, pkgPath, ctx.Bool("test"))
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]string, 0, len(imports))
+	for _, name := range imports {
+		name = doc.GetRootPath(name)
+		if !base.IsSliceContainsStr(list, name) {
+			list = append(list, name)
+		}
+	}
+	sort.Strings(list)
+	return list, nil
+}
+
 func runList(ctx *cli.Context) {
 	if err := setup(ctx); err != nil {
 		errors.SetError(err)
 		return
 	}
 
-	gf, _, imports, err := genGopmfile(ctx)
+	gfPath := path.Join(setting.WorkDir, setting.GOPMFILE)
+	if !setting.HasGOPATHSetting && !base.IsFile(gfPath) {
+		log.Warn("Dependency list may contain package itself without GOPATH setting and gopmfile.")
+	}
+	gf, target, err := parseGopmfile(gfPath)
 	if err != nil {
 		errors.SetError(err)
 		return
 	}
 
-	list := make([]string, 0, len(imports))
-	for _, name := range imports {
-		if !com.IsSliceContainsStr(list, name) {
-			list = append(list, name)
-		}
+	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor, "")
+	if err != nil {
+		errors.SetError(err)
+		return
 	}
-	sort.Strings(list)
 
 	fmt.Printf("Dependency list(%d):\n", len(list))
 	for _, name := range list {
-		name = doc.GetRootPath(name)
 		fmt.Printf("-> %s%s\n", name, verSuffix(gf, name))
 	}
 }

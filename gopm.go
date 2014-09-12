@@ -18,12 +18,19 @@ package main
 import (
 	"os"
 
-	"github.com/gpmgo/gopm/gopm"
-
+	"github.com/gpmgo/gopm/lib"
+	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
 
 func main() {
 	setting.LibraryMode = false
-	gopm.Run(os.Args)
+	if err := lib.Run(os.Args); err.HasError {
+		if err.Fatal != nil {
+			log.Fatal("%v", err.Fatal)
+		}
+		for _, e := range err.Errors {
+			log.Error("%v", e)
+		}
+	}
 }

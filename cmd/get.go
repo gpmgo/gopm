@@ -19,14 +19,12 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync"
 
-	"github.com/Unknwon/com"
-	"github.com/Unknwon/goconfig"
-	"github.com/codegangsta/cli"
-
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/doc"
 	"github.com/gpmgo/gopm/modules/errors"
+	"github.com/gpmgo/gopm/modules/goconfig"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -42,106 +40,75 @@ gopm get
 gopm get <import path>@[<tag|commit|branch>:<value>]
 gopm get <package name>@[<tag|commit|branch>:<value>]
 
-Can specify one or more: gopm get beego@tag:v0.9.0 github.com/beego/bee
+Can specify one or more: gopm get cli@tag:v1.2.0 github.com/Unknwon/macaron
 
 If no version specified and package exists in GOPATH,
 it will be skipped, unless user enabled '--remote, -r' option 
 then all the packages go into gopm local repository.`,
 	Action: runGet,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"download, d", "download given package only"},
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any"},
-		cli.BoolFlag{"local, l", "download all packages to local GOPATH"},
-		cli.BoolFlag{"gopath, g", "download all pakcages to GOPATH"},
-		cli.BoolFlag{"remote, r", "download all pakcages to gopm local repository"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"download, d", "download given package only", ""},
+		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
+		cli.BoolFlag{"local, l", "download all packages to local GOPATH", ""},
+		cli.BoolFlag{"gopath, g", "download all pakcages to GOPATH", ""},
+		cli.BoolFlag{"remote, r", "download all pakcages to gopm local repository", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
-}
-
-type safeMap struct {
-	locker *sync.RWMutex
-	data   map[string]bool
-}
-
-func (s *safeMap) Set(name string) {
-	s.locker.Lock()
-	defer s.locker.Unlock()
-	s.data[name] = true
-}
-
-func (s *safeMap) Get(name string) bool {
-	s.locker.RLock()
-	defer s.locker.RUnlock()
-	return s.data[name]
-}
-
-func NewSafeMap() *safeMap {
-	return &safeMap{
-		locker: &sync.RWMutex{},
-		data:   make(map[string]bool),
-	}
 }
 
 var (
 	// Saves packages that have been downloaded.
-	downloadCache = NewSafeMap()
-	skipCache     = NewSafeMap()
-	copyCache     = NewSafeMap()
+	downloadCache = base.NewSafeMap()
+	skipCache     = base.NewSafeMap()
+	copyCache     = base.NewSafeMap()
 	downloadCount int
 	failConut     int
 )
 
 // downloadPackage downloads package either use version control tools or not.
 func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error) {
-	log.Message("", "Downloading package: "+n.VerString())
+	log.Info("Downloading package: %s", n.VerString())
 	downloadCache.Set(n.RootPath)
 
-	var imports []string
-	var err error
+	vendor := base.GetTempDir()
+	defer os.RemoveAll(vendor)
+
+	var (
+		err     error
+		imports []string
+		srcPath string
+	)
+
 	// Check if only need to use VCS tools.
 	vcs := doc.GetVcsName(n.InstallGopath)
-	// If update, gopath and VCS tools set,
-	// then use VCS tools to update the package.
+	// If update, gopath and VCS tools set then use VCS tools to update the package.
 	if ctx.Bool("update") && (ctx.Bool("gopath") || ctx.Bool("local")) && len(vcs) > 0 {
-		err = n.UpdateByVcs(vcs)
-
-		var errFatal error
-		imports, errFatal = doc.GetImports(n.ImportPath, n.RootPath, n.InstallGopath, false)
-		if errFatal != nil {
-			return nil, nil, errFatal
+		if err = n.UpdateByVcs(vcs); err != nil {
+			return nil, nil, fmt.Errorf("fail to update by VCS(%s): %v", n.ImportPath, err)
 		}
+		srcPath = n.InstallGopath
 	} else {
-		// IsGetDepsOnly promises package is fixed version and exists in local repository.
-		if n.IsGetDepsOnly {
-			imports, err = doc.GetImports(n.ImportPath, n.RootPath, n.InstallPath, false)
-			if err != nil {
-				return nil, nil, err
-			}
-		} else {
+		if !n.IsGetDepsOnly || !n.IsExist() {
 			// Get revision value from local records.
-			if n.IsExist() {
-				n.Revision = setting.LocalNodes.MustValue(n.RootPath, "value")
+			n.Revision = setting.LocalNodes.MustValue(n.RootPath, "value")
+			if err = n.DownloadGopm(ctx); err != nil {
+				errors.AppendError(errors.NewErrDownload(n.ImportPath + ": " + err.Error()))
+				failConut++
+				os.RemoveAll(n.InstallPath)
+				return nil, nil, nil
 			}
-			imports, err = n.Download(ctx)
 		}
+		srcPath = n.InstallPath
 	}
-
-	if err != nil {
-		if setting.LibraryMode {
-			errors.AppendError(errors.NewErrDownload(n.ImportPath + "\n" + err.Error()))
+	fmt.Println(n.ValSuffix())
+	if n.IsGetDeps {
+		imports, err = getDepList(ctx, n.ImportPath, srcPath, vendor, n.ValSuffix())
+		if err != nil {
+			return nil, nil, fmt.Errorf("fail to list imports(%s): %v", n.ImportPath, err)
 		}
-		log.Error("get", "Fail to download package: "+n.ImportPath)
-		log.Error("", "\t"+err.Error())
-		failConut++
-		os.RemoveAll(n.InstallPath)
-		return nil, nil, nil
-	}
-
-	if !n.IsGetDeps {
-		imports = nil
-	} else {
-		fmt.Println(n.InstallPath, n.ValSuffix())
-		// err=autoLink(n.InstallPath, newPath)
+		if setting.Debug {
+			log.Debug("New imports: %v", imports)
+		}
 	}
 	return n, imports, err
 }
@@ -154,7 +121,7 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 		// Check if it is a valid remote path or C.
 		if n.ImportPath == "C" {
 			continue
-		} else if !doc.IsValidRemotePath(n.ImportPath) {
+		} else if !base.IsValidRemotePath(n.ImportPath) {
 			// Invalid import path.
 			if setting.LibraryMode {
 				errors.AppendError(errors.NewErrInvalidPackage(n.VerString()))
@@ -177,7 +144,7 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 		if downloadCache.Get(n.RootPath) {
 			if !skipCache.Get(n.RootPath) {
 				skipCache.Set(n.RootPath)
-				log.Trace("Skipped downloaded package: %s", n.VerString())
+				log.Debug("Skipped downloaded package: %s", n.VerString())
 			}
 			continue
 		}
@@ -187,8 +154,8 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 			if n.IsExist() {
 				if !skipCache.Get(n.RootPath) {
 					skipCache.Set(n.RootPath)
-					log.Log("%s", n.InstallPath)
-					log.Trace("Skipped installed package: %s", n.VerString())
+					log.Info("%s", n.InstallPath)
+					log.Debug("Skipped installed package: %s", n.VerString())
 				}
 
 				// Only copy when no version control.
@@ -213,12 +180,12 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 			gfPath := path.Join(n.InstallPath, setting.GOPMFILE)
 
 			// Check if has gopmfile.
-			if com.IsFile(gfPath) {
-				log.Log("Found gopmfile: %s", n.VerString())
+			if base.IsFile(gfPath) {
+				log.Info("Found gopmfile: %s", n.VerString())
 				var err error
-				gf, err = loadGopmfile(gfPath)
+				gf, _, err = parseGopmfile(gfPath)
 				if err != nil {
-					return err
+					return fmt.Errorf("fail to parse gopmfile(%s): %v", gfPath, err)
 				}
 			}
 
@@ -251,7 +218,7 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 		}
 
 		// Save record in local nodes.
-		log.Success("SUCC", "GET", n.VerString())
+		log.Info("Got %s", n.VerString())
 		downloadCount++
 
 		// Only save non-commit node.
@@ -271,24 +238,29 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 	return nil
 }
 
-func getPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err error) {
-	if err = downloadPackages(target, ctx, nodes); err != nil {
+func getPackages(target string, ctx *cli.Context, nodes []*doc.Node) error {
+	if err := downloadPackages(target, ctx, nodes); err != nil {
 		return err
 	}
-	if err = setting.SaveLocalNodes(); err != nil {
+	if err := setting.SaveLocalNodes(); err != nil {
 		return err
 	}
 
-	log.Log("%d package(s) downloaded, %d failed", downloadCount, failConut)
+	log.Info("%d package(s) downloaded, %d failed", downloadCount, failConut)
 	if ctx.GlobalBool("strict") && failConut > 0 && !setting.LibraryMode {
-		os.Exit(2)
+		return fmt.Errorf("fail to download some packages")
 	}
 	return nil
 }
 
 func getByGopmfile(ctx *cli.Context) error {
 	// Make sure gopmfile exists and up-to-date.
-	gf, target, imports, err := genGopmfile(ctx)
+	gf, target, err := parseGopmfile(setting.GOPMFILE)
+	if err != nil {
+		return err
+	}
+
+	imports, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor, "")
 	if err != nil {
 		return err
 	}
@@ -327,7 +299,10 @@ func getByPaths(ctx *cli.Context) error {
 
 		// Check package name.
 		if !strings.Contains(pkgPath, "/") {
-			tmpPath := setting.GetPkgFullPath(pkgPath)
+			tmpPath, err := setting.GetPkgFullPath(pkgPath)
+			if err != nil {
+				return err
+			}
 			if tmpPath != pkgPath {
 				n = doc.NewNode(tmpPath, n.Type, n.Value, n.IsGetDeps)
 			}
@@ -358,27 +333,16 @@ func runGet(ctx *cli.Context) {
 		names = "'--gopath, -g' and '--remote, -r'"
 	}
 	if hasConflict {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Command options have conflicts: %s", names))
-			return
-		}
-		log.Error("get", "Command options have conflicts")
-		log.Error("", "Following options are not supposed to use at same time:")
-		log.Error("", "\t"+names)
-		log.Help("Try 'gopm help get' to get more information")
+		errors.SetError(fmt.Errorf("Command options have conflicts: %s", names))
+		return
 	}
 
 	var err error
 	// Check number of arguments to decide which function to call.
 	if len(ctx.Args()) == 0 {
 		if ctx.Bool("download") {
-			if setting.LibraryMode {
-				errors.SetError(fmt.Errorf("Not enough arguments for option: '--download, -d'"))
-				return
-			}
-			log.Error("get", "Not enough arguments for option:")
-			log.Error("", "\t'--download, -d'")
-			log.Help("Try 'gopm help get' to get more information")
+			errors.SetError(fmt.Errorf("Not enough arguments for option: '--download, -d'"))
+			return
 		}
 		err = getByGopmfile(ctx)
 	} else {

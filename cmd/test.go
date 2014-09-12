@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -18,9 +18,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/codegangsta/cli"
-
-	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
@@ -35,7 +33,7 @@ and execute 'go test'
 gopm test <go test commands>`,
 	Action: runTest,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
@@ -45,29 +43,24 @@ func runTest(ctx *cli.Context) {
 		return
 	}
 
-	os.RemoveAll(doc.VENDOR)
+	os.RemoveAll(setting.DefaultVendor)
 	if !setting.Debug {
-		defer os.RemoveAll(doc.VENDOR)
+		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
-	_, newGopath, newCurPath, err := genNewGopath(ctx, true)
-	if err != nil {
+	if err := linkVendors(ctx); err != nil {
 		errors.SetError(err)
 		return
 	}
 
-	log.Trace("Testing...")
+	log.Info("Testing...")
 
 	cmdArgs := []string{"go", "test"}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
-	if err := execCmd(newGopath, newCurPath, cmdArgs...); err != nil {
-		if setting.LibraryMode {
-			errors.SetError(fmt.Errorf("Fail to run program: %v", err))
-			return
-		}
-		log.Error("test", "Fail to run program:")
-		log.Fatal("", "\t"+err.Error())
+	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
+		errors.SetError(fmt.Errorf("fail to run program: %v", err))
+		return
 	}
 
-	log.Success("SUCC", "test", "Command executed successfully!")
+	log.Info("Command executed successfully!")
 }

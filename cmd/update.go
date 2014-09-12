@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -17,13 +17,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
 
-	"github.com/Unknwon/com"
-	"github.com/codegangsta/cli"
-
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/doc"
 	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
@@ -41,7 +41,7 @@ Resources will be updated automatically after executed this command,
 but you have to confirm before updaing gopm itself.`,
 	Action: runUpdate,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
@@ -54,7 +54,7 @@ func loadLocalVerInfo() (ver version) {
 	verPath := path.Join(setting.HomeDir, setting.VERINFO)
 
 	// First time run should not exist.
-	if !com.IsExist(verPath) {
+	if !base.IsExist(verPath) {
 		return ver
 	}
 
@@ -83,34 +83,32 @@ func runUpdate(ctx *cli.Context) {
 
 	// Get remote version info.
 	var remoteVerInfo version
-	if err := com.HttpGetJSON(doc.HttpClient, "http://gopm.io/VERSION.json", &remoteVerInfo); err != nil {
-		log.Error("Update", "Fail to fetch VERSION.json")
-		log.Fatal("", err.Error())
+	if err := base.HttpGetJSON(doc.HttpClient, "http://gopm.io/VERSION.json", &remoteVerInfo); err != nil {
+		log.Fatal("Fail to fetch VERSION.json: %v", err)
 	}
 
 	// Package name list.
 	if remoteVerInfo.PackageNameList > localVerInfo.PackageNameList {
-		log.Log("Updating pkgname.list...%v > %v",
+		log.Info("Updating pkgname.list...%v > %v",
 			localVerInfo.PackageNameList, remoteVerInfo.PackageNameList)
-		data, err := com.HttpGetBytes(doc.HttpClient, "https://raw2.github.com/gpmgo/docs/master/pkgname.list", nil)
+		data, err := base.HttpGetBytes(doc.HttpClient, "https://raw2.github.com/gpmgo/docs/master/pkgname.list", nil)
 		if err != nil {
-			log.Error("Update", "Fail to update pkgname.list")
-			log.Fatal("", err.Error())
+			log.Fatal("Fail to update pkgname.list: %v", err)
 		}
 
-		if err = com.WriteFile(path.Join(setting.HomeDir, setting.PkgNamesFile), data); err != nil {
-			log.Error("Update", "Fail to save pkgname.list")
-			log.Fatal("", err.Error())
+		if err = ioutil.WriteFile(setting.PkgNameListFile, data, os.ModePerm); err != nil {
+			log.Fatal("Fail to save pkgname.list: %v", err)
 		}
-		log.Log("Update pkgname.list to %v succeed!", remoteVerInfo.PackageNameList)
+		log.Info("Update pkgname.list to %v succeed!", remoteVerInfo.PackageNameList)
 		isAnythingUpdated = true
 	}
 
 	// Gopm.
 	if remoteVerInfo.Gopm != setting.VERSION {
-		log.Log("Updating gopm...%v > %v", setting.VERSION, remoteVerInfo.Gopm)
+		log.Info("Updating gopm...%v > %v", setting.VERSION, remoteVerInfo.Gopm)
 
-		tmpBinPath := path.Join(setting.GopmTempPath, "gopm")
+		tmpDir := base.GetTempDir()
+		tmpBinPath := path.Join(tmpDir, "gopm")
 		if runtime.GOOS == "windows" {
 			tmpBinPath += ".exe"
 		}
@@ -119,38 +117,36 @@ func runUpdate(ctx *cli.Context) {
 		os.Remove(tmpBinPath)
 
 		// Fetch code.
-		args := []string{"bin", "-u", "-r", "-d=" + setting.GopmTempPath}
+		args := []string{"bin", "-u", "-r", "-d=" + tmpDir}
 		if ctx.Bool("verbose") {
 			args = append(args, "-v")
 		}
 		args = append(args, "github.com/gpmgo/gopm")
-		stdout, stderr, err := com.ExecCmd("gopm", args...)
+		stdout, stderr, err := base.ExecCmd("gopm", args...)
 		if err != nil {
-			log.Error("Update", "Fail to execute 'bin -u -r -d=/Users/jiahuachen/.gopm/temp -v github.com/gpmgo/gopm")
-			log.Fatal("", "\t"+stderr)
+			log.Fatal("Fail to execute 'bin -u -r -d=/Users/jiahuachen/.gopm/temp -v github.com/gpmgo/gopm: %s", stderr)
 		}
 		if len(stdout) > 0 {
 			fmt.Print(stdout)
 		}
 
 		// Check if previous steps were successful.
-		if !com.IsExist(tmpBinPath) {
+		if !base.IsExist(tmpBinPath) {
 			log.Error("Update", "Fail to continue command")
 			log.Fatal("", "Previous steps weren't successful, no binary produced")
 		}
 
 		movePath := path.Join(setting.WorkDir, path.Base(os.Args[0]))
-		log.Log("New binary will be replaced for %s", movePath)
+		log.Info("New binary will be replaced for %s", movePath)
 		// Move binary to given directory.
 		if runtime.GOOS != "windows" {
 			err := os.Rename(tmpBinPath, movePath)
 			if err != nil {
-				log.Error("Update", "Fail to move binary")
-				log.Fatal("", err.Error())
+				log.Fatal("Fail to move binary: %v", err)
 			}
 			os.Chmod(movePath+"/"+path.Base(tmpBinPath), os.ModePerm)
 		} else {
-			batPath := path.Join(setting.GopmTempPath, "update.bat")
+			batPath := path.Join(tmpDir, "update.bat")
 			f, err := os.Create(batPath)
 			if err != nil {
 				log.Error("Update", "Fail to generate bat file")
@@ -173,7 +169,7 @@ func runUpdate(ctx *cli.Context) {
 			}
 		}
 
-		log.Success("SUCC", "Update", "Command execute successfully!")
+		log.Info("Command execute successfully!")
 		isAnythingUpdated = true
 	}
 
@@ -181,15 +177,13 @@ func runUpdate(ctx *cli.Context) {
 		// Save JSON.
 		f, err := os.Create(setting.VERINFO)
 		if err != nil {
-			log.Error("Update", "Fail to create VERSION.json")
-			log.Fatal("", err.Error())
+			log.Fatal("Fail to create VERSION.json: %v", err)
 		}
 		if err := json.NewEncoder(f).Encode(&remoteVerInfo); err != nil {
-			log.Error("Update", "Fail to encode VERSION.json")
-			log.Fatal("", err.Error())
+			log.Fatal("Fail to encode VERSION.json: %v", err)
 		}
 	} else {
-		log.Log("Nothing need to be updated")
+		log.Info("Nothing need to be updated")
 	}
-	log.Log("Exit old gopm")
+	log.Info("Exit old gopm")
 }

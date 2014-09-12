@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -17,14 +17,10 @@ package cmd
 import (
 	"os"
 	"path"
-	"sort"
 	"strings"
 
-	"github.com/Unknwon/com"
-	"github.com/Unknwon/goconfig"
-	"github.com/codegangsta/cli"
-
-	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/base"
+	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/errors"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
@@ -40,8 +36,8 @@ gopm gen
 Make sure you run this command in the root path of a go project.`,
 	Action: runGen,
 	Flags: []cli.Flag{
-		cli.BoolFlag{"local, l", "generate local GOPATH directories"},
-		cli.BoolFlag{"verbose, v", "show process details"},
+		cli.BoolFlag{"local, l", "generate local GOPATH directories", ""},
+		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
 
@@ -51,8 +47,40 @@ func runGen(ctx *cli.Context) {
 		return
 	}
 
-	gf, _, _, err := genGopmfile(ctx)
+	gfPath := path.Join(setting.WorkDir, setting.GOPMFILE)
+	if !setting.HasGOPATHSetting && !base.IsFile(gfPath) {
+		log.Warn("Dependency list may contain package itself without GOPATH setting and gopmfile.")
+	}
+	gf, target, err := parseGopmfile(gfPath)
 	if err != nil {
+		errors.SetError(err)
+		return
+	}
+
+	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor, "")
+	if err != nil {
+		errors.SetError(err)
+		return
+	}
+	for _, name := range list {
+		// Check if user has specified the version.
+		if val := gf.MustValue("deps", name); len(val) == 0 {
+			gf.SetValue("deps", name, "")
+		}
+	}
+
+	// Check resources.
+	if _, err = gf.GetValue("res", "include"); err != nil {
+		resList := make([]string, 0, len(setting.CommonRes))
+		for _, res := range setting.CommonRes {
+			if base.IsExist(res) {
+				resList = append(resList, res)
+			}
+		}
+		gf.SetValue("res", "include", strings.Join(resList, "|"))
+	}
+
+	if err = setting.SaveGopmfile(gf, gfPath); err != nil {
 		errors.SetError(err)
 		return
 	}
@@ -62,7 +90,7 @@ func runGen(ctx *cli.Context) {
 		if len(localGopath) == 0 {
 			localGopath = "./vendor"
 			gf.SetValue("project", "local_gopath", localGopath)
-			if err = saveGopmfile(gf, setting.GOPMFILE); err != nil {
+			if err = setting.SaveGopmfile(gf, gfPath); err != nil {
 				errors.SetError(err)
 				return
 			}
@@ -72,55 +100,6 @@ func runGen(ctx *cli.Context) {
 			os.MkdirAll(path.Join(localGopath, name), os.ModePerm)
 		}
 	}
-	log.Success("SUCC", "gen", "Generate gopmfile successfully!")
-}
 
-// genGopmfile generates gopmfile and returns it,
-// along with target and dependencies.
-func genGopmfile(ctx *cli.Context) (*goconfig.ConfigFile, string, []string, error) {
-	if !com.IsExist(setting.GOPMFILE) {
-		os.Create(setting.GOPMFILE)
-	}
-
-	if com.IsSliceContainsStr([]string{"gen", "list"}, ctx.Command.Name) {
-		os.RemoveAll(doc.VENDOR)
-		if !setting.Debug {
-			defer os.RemoveAll(doc.VENDOR)
-		}
-	}
-	gf, err := loadGopmfile(setting.GOPMFILE)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	target, _, _, err := genNewGopath(ctx, false)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	rootPath := doc.GetRootPath(target)
-
-	imports, err := doc.GetImports(target, rootPath, setting.WorkDir, false)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	sort.Strings(imports)
-	for _, name := range imports {
-		name = doc.GetRootPath(name)
-		// Check if user has specified the version.
-		if val := gf.MustValue("deps", name); len(val) == 0 {
-			gf.SetValue("deps", name, "")
-		}
-	}
-
-	// Check resources.
-	if _, err := gf.GetValue("res", "include"); err != nil {
-		resList := make([]string, 0, len(setting.CommonRes))
-		for _, res := range setting.CommonRes {
-			if com.IsExist(res) {
-				resList = append(resList, res)
-			}
-		}
-		gf.SetValue("res", "include", strings.Join(resList, "|"))
-	}
-
-	return gf, target, imports, saveGopmfile(gf, setting.GOPMFILE)
+	log.Info("Generate gopmfile successfully!")
 }

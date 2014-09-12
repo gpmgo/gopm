@@ -1,4 +1,4 @@
-// Copyright 2014 Unknown
+// Copyright 2014 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -12,17 +12,32 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package doc
+package base
 
 import (
-	"github.com/Unknwon/com"
+	"sync"
 )
 
-var defaultTags = map[string]string{"git": MASTER, "hg": DEFAULT, "svn": TRUNK}
+type SafeMap struct {
+	locker *sync.RWMutex
+	data   map[string]bool
+}
 
-func bestTag(tags map[string]string, defaultTag string) (string, string, error) {
-	if commit, ok := tags[defaultTag]; ok {
-		return defaultTag, commit, nil
+func (s *SafeMap) Set(name string) {
+	s.locker.Lock()
+	defer s.locker.Unlock()
+	s.data[name] = true
+}
+
+func (s *SafeMap) Get(name string) bool {
+	s.locker.RLock()
+	defer s.locker.RUnlock()
+	return s.data[name]
+}
+
+func NewSafeMap() *SafeMap {
+	return &SafeMap{
+		locker: &sync.RWMutex{},
+		data:   make(map[string]bool),
 	}
-	return "", "", com.NotFoundError{"Tag or branch not found."}
 }
