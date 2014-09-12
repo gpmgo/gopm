@@ -126,7 +126,7 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 			if setting.LibraryMode {
 				errors.AppendError(errors.NewErrInvalidPackage(n.VerString()))
 			}
-			log.Error("download", "Skipped invalid package: "+n.VerString())
+			log.Error("Skipped invalid package: " + n.VerString())
 			failConut++
 			continue
 		}

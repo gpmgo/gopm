@@ -74,11 +74,12 @@ func runBin(ctx *cli.Context) {
 	if i := strings.Index(info, "@"); i > -1 {
 		pkgPath = info[:i]
 		var err error
-		n.Type, n.Value, err = validPkgInfo(info[i+1:])
+		tp, val, err := validPkgInfo(info[i+1:])
 		if err != nil {
 			errors.SetError(err)
 			return
 		}
+		n = doc.NewNode(pkgPath, tp, val, !ctx.Bool("download"))
 	}
 
 	// Check package name.
@@ -123,25 +124,39 @@ func runBin(ctx *cli.Context) {
 		}()
 	}
 
-	if err := buildBinary(ctx); err != nil {
+	// if err := buildBinary(ctx); err != nil {
+	// 	errors.SetError(err)
+	// 	return
+	// }
+
+	if err := linkVendors(ctx, n.ImportPath); err != nil {
 		errors.SetError(err)
 		return
 	}
 
-	gf, target, err := parseGopmfile(setting.GOPMFILE)
+	log.Info("Installing...")
+
+	cmdArgs := []string{"go", "install"}
+	if ctx.Bool("verbose") {
+		cmdArgs = append(cmdArgs, "-v")
+	}
+	cmdArgs = append(cmdArgs, n.ImportPath)
+	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
+		errors.SetError(fmt.Errorf("fail to run program: %v", err))
+		return
+	}
+
+	gf, _, err := parseGopmfile(setting.GOPMFILE)
 	if err != nil {
 		errors.SetError(err)
 		return
 	}
 
 	// Because build command moved binary to root path.
-	binName := path.Base(target)
+	binName := path.Base(n.RootPath)
+	binPath := path.Join(setting.DefaultVendor, "bin", path.Base(n.RootPath))
 	if runtime.GOOS == "windows" {
 		binName += ".exe"
-	}
-	if !base.IsFile(binName) {
-		errors.SetError(fmt.Errorf("Previous steps weren't successful or the project does not contain main package"))
-		return
 	}
 
 	// Move binary to given directory.
@@ -150,6 +165,14 @@ func runBin(ctx *cli.Context) {
 		movePath = ctx.String("dir")
 	} else if strings.HasPrefix(n.ImportPath, "code.google.com/p/go.tools/cmd/") {
 		movePath = path.Join(runtime.GOROOT(), "pkg/tool", runtime.GOOS+"_"+runtime.GOARCH)
+		log.Info("Command executed successfully!")
+		fmt.Println("Binary has been built into: " + movePath)
+		return
+	}
+
+	if !base.IsFile(binPath) {
+		errors.SetError(fmt.Errorf("Previous steps weren't successful or the project does not contain main package"))
+		return
 	}
 
 	if base.IsExist(path.Join(movePath, binName)) {
@@ -158,7 +181,7 @@ func runBin(ctx *cli.Context) {
 		}
 	}
 
-	if err := os.Rename(binName, movePath+"/"+binName); err != nil {
+	if err := os.Rename(binPath, movePath+"/"+binName); err != nil {
 		errors.SetError(fmt.Errorf("Fail to move binary: %v", err))
 		return
 	}
@@ -179,5 +202,4 @@ func runBin(ctx *cli.Context) {
 
 	log.Info("Command executed successfully!")
 	fmt.Println("Binary has been built into: " + movePath)
-	os.Exit(0) // FIXME: I don't what the hack is going on when delete this line.
 }

@@ -140,10 +140,12 @@ func execCmd(gopath, curPath string, args ...string) error {
 		log.Error("", "Fail to setting GOPATH:")
 		log.Fatal("", "\t"+err.Error())
 	}
-	defer func() {
-		log.Info("Setting GOPATH back to %s", oldGopath)
-		os.Setenv("GOPATH", oldGopath)
-	}()
+	if setting.HasGOPATHSetting {
+		defer func() {
+			log.Info("Setting GOPATH back to %s", oldGopath)
+			os.Setenv("GOPATH", oldGopath)
+		}()
+	}
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = curPath

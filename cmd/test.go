@@ -48,7 +48,7 @@ func runTest(ctx *cli.Context) {
 		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
-	if err := linkVendors(ctx); err != nil {
+	if err := linkVendors(ctx, ""); err != nil {
 		errors.SetError(err)
 		return
 	}

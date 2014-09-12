@@ -73,11 +73,14 @@ func validPkgInfo(info string) (doc.RevisionType, string, error) {
 	return "", "", fmt.Errorf("cannot parse dependency version: %v", info)
 }
 
-func linkVendors(ctx *cli.Context) error {
+func linkVendors(ctx *cli.Context, optTarget string) error {
 	gfPath := path.Join(setting.WorkDir, setting.GOPMFILE)
 	gf, target, err := parseGopmfile(gfPath)
 	if err != nil {
 		return fmt.Errorf("fail to parse gopmfile: %v", err)
+	}
+	if len(optTarget) > 0 {
+		target = optTarget
 	}
 	rootPath := doc.GetRootPath(target)
 
@@ -180,7 +183,7 @@ func runRun(ctx *cli.Context) {
 		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
-	if err := linkVendors(ctx); err != nil {
+	if err := linkVendors(ctx, ""); err != nil {
 		errors.SetError(err)
 		return
 	}

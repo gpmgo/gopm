@@ -47,14 +47,14 @@ func buildBinary(ctx *cli.Context, args ...string) error {
 		return err
 	}
 
-	if err := linkVendors(ctx); err != nil {
+	if err := linkVendors(ctx, ""); err != nil {
 		return err
 	}
 
 	log.Info("Building...")
 
 	cmdArgs := []string{"go", "build"}
-	cmdArgs = append(cmdArgs, ctx.Args()...)
+	cmdArgs = append(cmdArgs, args...)
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
 		return fmt.Errorf("fail to build program: %v", err)
 	}
