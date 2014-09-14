@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-// Gopm(Go Package Manager) is a Go package manage tool for searching, installing, updating and sharing packages in Go.
+// Gopm(Go Package Manager) is a Go package manage and build tool for Go.
 package main
 
 import (
