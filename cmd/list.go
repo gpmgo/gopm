@@ -121,6 +121,9 @@ func runList(ctx *cli.Context) {
 		return
 	}
 
+	defer func() {
+		os.RemoveAll(setting.DefaultVendor)
+	}()
 	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor)
 	if err != nil {
 		errors.SetError(err)

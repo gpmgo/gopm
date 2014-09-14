@@ -23,16 +23,16 @@ type SafeMap struct {
 	data   map[string]bool
 }
 
-func (s *SafeMap) Set(name string) {
+func (s *SafeMap) Set(verstr string) {
 	s.locker.Lock()
 	defer s.locker.Unlock()
-	s.data[name] = true
+	s.data[verstr] = true
 }
 
-func (s *SafeMap) Get(name string) bool {
+func (s *SafeMap) Get(verstr string) bool {
 	s.locker.RLock()
 	defer s.locker.RUnlock()
-	return s.data[name]
+	return s.data[verstr]
 }
 
 func NewSafeMap() *SafeMap {

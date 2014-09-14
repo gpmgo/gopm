@@ -68,7 +68,7 @@ var (
 // downloadPackage downloads package either use version control tools or not.
 func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error) {
 	log.Info("Downloading package: %s", n.VerString())
-	downloadCache.Set(n.RootPath)
+	downloadCache.Set(n.VerString())
 
 	vendor := base.GetTempDir()
 	defer os.RemoveAll(vendor)
@@ -141,9 +141,9 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 			n.IsGetDepsOnly = true
 		}
 
-		if downloadCache.Get(n.RootPath) {
-			if !skipCache.Get(n.RootPath) {
-				skipCache.Set(n.RootPath)
+		if downloadCache.Get(n.VerString()) {
+			if !skipCache.Get(n.VerString()) {
+				skipCache.Set(n.VerString())
 				log.Debug("Skipped downloaded package: %s", n.VerString())
 			}
 			continue
@@ -152,15 +152,15 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 		if !ctx.Bool("update") {
 			// Check if package has been downloaded.
 			if n.IsExist() {
-				if !skipCache.Get(n.RootPath) {
-					skipCache.Set(n.RootPath)
+				if !skipCache.Get(n.VerString()) {
+					skipCache.Set(n.VerString())
 					log.Info("%s", n.InstallPath)
 					log.Debug("Skipped installed package: %s", n.VerString())
 				}
 
 				// Only copy when no version control.
-				if !copyCache.Get(n.RootPath) && (ctx.Bool("gopath") || ctx.Bool("local")) {
-					copyCache.Set(n.RootPath)
+				if !copyCache.Get(n.VerString()) && (ctx.Bool("gopath") || ctx.Bool("local")) {
+					copyCache.Set(n.VerString())
 					if err = n.CopyToGopath(); err != nil {
 						return err
 					}
