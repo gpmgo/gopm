@@ -1,4 +1,4 @@
-// Copyright 2013 Unknown
+// Copyright 2013 Unknwon
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -25,7 +25,6 @@ import (
 
 	"github.com/Unknwon/com"
 
-	"github.com/gpmgo/gopm/modules/doc"
 	"github.com/gpmgo/gopm/modules/setting"
 )
 
@@ -62,7 +61,7 @@ func makeLink(srcPath, destPath string) error {
 	os.RemoveAll(destPath)
 
 	return com.CopyDir(srcPath, destPath, func(filePath string) bool {
-		return strings.Contains(filePath, doc.VENDOR)
+		return strings.Contains(filePath, setting.VENDOR)
 	})
 }
 
