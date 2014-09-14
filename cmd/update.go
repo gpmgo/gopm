@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 
 	"github.com/gpmgo/gopm/modules/base"
@@ -71,6 +73,18 @@ func loadLocalVerInfo() (ver version) {
 	return ver
 }
 
+func execPath() (string, error) {
+	file, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		return "", err
+	}
+	p, err := filepath.Abs(file)
+	if err != nil {
+		return "", err
+	}
+	return p, nil
+}
+
 func runUpdate(ctx *cli.Context) {
 	if setting.LibraryMode {
 		errors.SetError(fmt.Errorf("Library mode does not support update command"))
@@ -104,7 +118,7 @@ func runUpdate(ctx *cli.Context) {
 	}
 
 	// Gopm.
-	if remoteVerInfo.Gopm != setting.VERSION {
+	if remoteVerInfo.Gopm > setting.VERSION {
 		log.Info("Updating gopm...%v > %v", setting.VERSION, remoteVerInfo.Gopm)
 
 		tmpDir := base.GetTempDir()
@@ -132,11 +146,14 @@ func runUpdate(ctx *cli.Context) {
 
 		// Check if previous steps were successful.
 		if !base.IsExist(tmpBinPath) {
-			log.Error("Update", "Fail to continue command")
-			log.Fatal("", "Previous steps weren't successful, no binary produced")
+			log.Error("Fail to continue command")
+			log.Fatal("Previous steps weren't successful, no binary produced")
 		}
 
-		movePath := path.Join(setting.WorkDir, path.Base(os.Args[0]))
+		movePath, err := execPath()
+		if err != nil {
+			log.Fatal("Fail to get execute path: %v", err)
+		}
 		log.Info("New binary will be replaced for %s", movePath)
 		// Move binary to given directory.
 		if runtime.GOOS != "windows" {
@@ -175,7 +192,9 @@ func runUpdate(ctx *cli.Context) {
 
 	if isAnythingUpdated {
 		// Save JSON.
-		f, err := os.Create(setting.VERINFO)
+		verPath := path.Join(setting.HomeDir, setting.VERINFO)
+		os.MkdirAll(path.Dir(verPath), os.ModePerm)
+		f, err := os.Create(verPath)
 		if err != nil {
 			log.Fatal("Fail to create VERSION.json: %v", err)
 		}
