@@ -3,7 +3,7 @@ Go Package Manager [![wercker status](https://app.wercker.com/status/899e79d6738
 
 Gopm(Go Package Manager) is a Go package manage and build tool for Go.
 
-**News** Give a shoot for [Gopm.io](http://gopm) for versioning caching and delivering Go package service.
+**News** Give a shoot for [Gopm.io](http://gopm.io) for versioning caching and delivering Go package service.
 
 **News** Want online cross-compile and download service? Just try [GoBuild.io](http://gobuild.io) and it won't let you down! BTW, it's powered by Gopm.
 
