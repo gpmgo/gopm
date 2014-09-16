@@ -19,6 +19,7 @@ import (
 	"go/build"
 	"os"
 	"path"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -52,12 +53,27 @@ func joinPath(name string, num int) string {
 	return name
 }
 
+var gopkgPathPattern = regexp.MustCompile(`^/(?:([a-zA-Z0-9][-a-zA-Z0-9]+)/)?([a-zA-Z][-.a-zA-Z0-9]*)\.((?:v0|v[1-9][0-9]*)(?:\.0|\.[1-9][0-9]*){0,2})(?:\.git)?((?:/[a-zA-Z0-9][-.a-zA-Z0-9]*)*)$`)
+
 // GetRootPath returns project root path.
 func GetRootPath(name string) string {
 	for prefix, num := range setting.RootPathPairs {
 		if strings.HasPrefix(name, prefix) {
 			return joinPath(name, num)
 		}
+	}
+
+	if strings.HasPrefix(name, "gopkg.in") {
+		m := gopkgPathPattern.FindStringSubmatch(strings.TrimPrefix(name, "gopkg.in"))
+		if m == nil {
+			return name
+		}
+		user := m[1]
+		repo := m[2]
+		if len(user) == 0 {
+			user = "go-" + repo
+		}
+		return path.Join("gopkg.in", user, repo+m[3])
 	}
 	return name
 }
