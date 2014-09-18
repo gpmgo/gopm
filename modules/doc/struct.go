@@ -397,13 +397,8 @@ func init() {
 
 // DownloadGopm downloads remote package from gopm registry.
 func (n *Node) DownloadGopm(ctx *cli.Context) error {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s?pkgname=%s&revision=%s",
-		setting.RegistryUrl, setting.URL_API_DOWNLOAD, n.RootPath, n.Value), nil)
-	if err != nil {
-		return fmt.Errorf("fail to new request: %v", err)
-	}
-	req.Header.Set("User-Agent", base.UserAgent)
-	resp, err := HttpClient.Do(req)
+	resp, err := http.Get(fmt.Sprintf("%s%s?pkgname=%s&revision=%s",
+		setting.RegistryUrl, setting.URL_API_DOWNLOAD, n.RootPath, n.Value))
 	if err != nil {
 		return fmt.Errorf("fail to make request: %v", err)
 	}
@@ -427,10 +422,10 @@ func (n *Node) DownloadGopm(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer fw.Close()
 	if _, err = io.Copy(fw, resp.Body); err != nil {
 		return fmt.Errorf("fail to save archive: %v", err)
 	}
+	fw.Close()
 
 	// Remove old files.
 	os.RemoveAll(n.InstallPath)
