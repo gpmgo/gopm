@@ -27,7 +27,7 @@ import (
 	"github.com/gpmgo/gopm/modules/setting"
 )
 
-const APP_VER = "0.8.0.0914 Beta"
+const APP_VER = "0.8.0.0917 Beta"
 
 func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())

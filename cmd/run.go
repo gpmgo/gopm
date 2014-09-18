@@ -137,7 +137,6 @@ func linkVendors(ctx *cli.Context, optTarget string) error {
 		}
 
 		venderPath := path.Join(setting.InstallRepoPath, pkg.RootPath+pkg.ValSuffix())
-		fmt.Println(venderPath)
 		if !base.IsExist(venderPath) {
 			return fmt.Errorf("package not installed: %s", pkg.RootPath+pkg.VerSuffix())
 		}
