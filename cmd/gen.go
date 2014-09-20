@@ -36,6 +36,7 @@ gopm gen
 Make sure you run this command in the root path of a go project.`,
 	Action: runGen,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"local, l", "generate local GOPATH directories", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},

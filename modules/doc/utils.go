@@ -84,7 +84,7 @@ func IsGoRepoPath(name string) bool {
 }
 
 // ListImports checks and returns a list of imports of given import path and options.
-func ListImports(importPath, rootPath, vendorPath, srcPath string, isTest bool) ([]string, error) {
+func ListImports(importPath, rootPath, vendorPath, srcPath, tags string, isTest bool) ([]string, error) {
 	oldGOPATH := os.Getenv("GOPATH")
 	sep := ":"
 	if runtime.GOOS == "windows" {
@@ -92,7 +92,7 @@ func ListImports(importPath, rootPath, vendorPath, srcPath string, isTest bool) 
 	}
 
 	ctxt := build.Default
-	// TODO: support tags.
+	ctxt.BuildTags = strings.Split(tags, " ")
 	ctxt.GOPATH = vendorPath + sep + oldGOPATH
 	if setting.Debug {
 		log.Debug("Import/root path: %s : %s", importPath, rootPath)
@@ -118,7 +118,7 @@ func ListImports(importPath, rootPath, vendorPath, srcPath string, isTest bool) 
 		if IsGoRepoPath(name) {
 			continue
 		} else if strings.HasPrefix(name, rootPath) {
-			moreImports, err := ListImports(name, rootPath, vendorPath, srcPath, isTest)
+			moreImports, err := ListImports(name, rootPath, vendorPath, srcPath, tags, isTest)
 			if err != nil {
 				return nil, err
 			}

@@ -33,6 +33,7 @@ and execute 'go test'
 gopm test <go test commands>`,
 	Action: runTest,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
@@ -56,6 +57,10 @@ func runTest(ctx *cli.Context) {
 	log.Info("Testing...")
 
 	cmdArgs := []string{"go", "test"}
+	if len(ctx.String("tags")) > 0 {
+		cmdArgs = append(cmdArgs, "-tags")
+		cmdArgs = append(cmdArgs, ctx.String("tags"))
+	}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
 		errors.SetError(fmt.Errorf("fail to run program: %v", err))

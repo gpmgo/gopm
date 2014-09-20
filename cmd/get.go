@@ -47,6 +47,7 @@ it will be skipped, unless user enabled '--remote, -r' option
 then all the packages go into gopm local repository.`,
 	Action: runGet,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"download, d", "download given package only", ""},
 		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
 		cli.BoolFlag{"local, l", "download all packages to local GOPATH", ""},

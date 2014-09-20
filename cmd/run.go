@@ -40,6 +40,7 @@ and run the cmd in the .gopmfile, Windows hasn't supported yet,
 you need to run the command right at the local_gopath dir.`,
 	Action: runRun,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"local, l", "run command with local gopath context", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
@@ -99,7 +100,7 @@ func linkVendors(ctx *cli.Context, optTarget string) error {
 
 	// Check and loads dependency pakcages.
 	log.Debug("Loading dependencies...")
-	imports, err := doc.ListImports(target, rootPath, setting.DefaultVendor, setting.WorkDir, ctx.Bool("test"))
+	imports, err := doc.ListImports(target, rootPath, setting.DefaultVendor, setting.WorkDir, ctx.String("tags"), ctx.Bool("test"))
 	if err != nil {
 		return fmt.Errorf("fail to list imports: %v", err)
 	}
@@ -154,7 +155,7 @@ func linkVendors(ctx *cli.Context, optTarget string) error {
 		// parseGopmfile only returns right target when parse work directory.
 		target = pkg.RootPath
 		rootPath := target
-		imports, err := doc.ListImports(target, rootPath, setting.DefaultVendor, linkPath, ctx.Bool("test"))
+		imports, err := doc.ListImports(target, rootPath, setting.DefaultVendor, linkPath, ctx.String("tags"), ctx.Bool("test"))
 		if err != nil {
 			errors.SetError(err)
 		}
@@ -191,6 +192,10 @@ func runRun(ctx *cli.Context) {
 	log.Info("Running...")
 
 	cmdArgs := []string{"go", "run"}
+	if len(ctx.String("tags")) > 0 {
+		cmdArgs = append(cmdArgs, "-tags")
+		cmdArgs = append(cmdArgs, ctx.String("tags"))
+	}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
 		errors.SetError(fmt.Errorf("fail to run program: %v", err))

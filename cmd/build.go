@@ -35,6 +35,7 @@ and execute 'go build'
 gopm build <go build commands>`,
 	Action: runBuild,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
 		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
@@ -55,6 +56,10 @@ func buildBinary(ctx *cli.Context, args ...string) error {
 
 	cmdArgs := []string{"go", "build"}
 	cmdArgs = append(cmdArgs, args...)
+	if len(ctx.String("tags")) > 0 {
+		cmdArgs = append(cmdArgs, "-tags")
+		cmdArgs = append(cmdArgs, ctx.String("tags"))
+	}
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
 		return fmt.Errorf("fail to build program: %v", err)
 	}

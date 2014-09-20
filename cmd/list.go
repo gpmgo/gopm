@@ -41,6 +41,7 @@ gopm list
 Make sure you run this command in the root path of a go project.`,
 	Action: runList,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"test, t", "show test imports", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
@@ -89,7 +90,7 @@ func getDepList(ctx *cli.Context, target, pkgPath, vendor string) ([]string, err
 		}
 	}
 
-	imports, err := doc.ListImports(target, rootPath, vendor, pkgPath, ctx.Bool("test"))
+	imports, err := doc.ListImports(target, rootPath, vendor, pkgPath, ctx.String("tags"), ctx.Bool("test"))
 	if err != nil {
 		return nil, err
 	}

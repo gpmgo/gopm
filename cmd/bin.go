@@ -43,6 +43,7 @@ Can only specify one each time, and only works for projects that
 contain main package`,
 	Action: runBin,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.StringFlag{"dir, d", "./", "build binary to given directory", ""},
 		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
 		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
@@ -108,7 +109,7 @@ func runBin(ctx *cli.Context) {
 	tmpVendor := path.Join("vendor", path.Base(n.RootPath))
 	os.RemoveAll(tmpVendor)
 	os.RemoveAll(setting.VENDOR)
-	// TODO: should use .gopm/temp path.
+	// FIXME: should use .gopm/temp path.
 	if err := autoLink(n.InstallPath, tmpVendor); err != nil {
 		errors.SetError(fmt.Errorf("Fail to link slef: %v", err))
 		return
@@ -139,6 +140,10 @@ func runBin(ctx *cli.Context) {
 	cmdArgs := []string{"go", "install"}
 	if ctx.Bool("verbose") {
 		cmdArgs = append(cmdArgs, "-v")
+	}
+	if len(ctx.String("tags")) > 0 {
+		cmdArgs = append(cmdArgs, "-tags")
+		cmdArgs = append(cmdArgs, ctx.String("tags"))
 	}
 	cmdArgs = append(cmdArgs, n.ImportPath)
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {

@@ -36,6 +36,7 @@ gopm install
 If no argument is supplied, then gopmfile must be present`,
 	Action: runInstall,
 	Flags: []cli.Flag{
+		cli.StringFlag{"tags", "", "apply build tags", ""},
 		// cli.BoolFlag{"package, p", "only install non-main packages", ""},
 		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
@@ -71,6 +72,10 @@ func runInstall(ctx *cli.Context) {
 	cmdArgs := []string{"go", "install"}
 	if ctx.Bool("verbose") {
 		cmdArgs = append(cmdArgs, "-v")
+	}
+	if len(ctx.String("tags")) > 0 {
+		cmdArgs = append(cmdArgs, "-tags")
+		cmdArgs = append(cmdArgs, ctx.String("tags"))
 	}
 	cmdArgs = append(cmdArgs, target)
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
