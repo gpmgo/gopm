@@ -9,8 +9,6 @@ Gopm(Go Package Manager) is a Go package manage and build tool for Go.
 
 Please see **[Documentation](https://github.com/gpmgo/docs)** before you ever start.
 
-Code Convention: based on [Go Code Convention](https://github.com/Unknwon/go-code-convention).
-
 ## Requirements
 
 - Go development environment: >= **go1.2**

@@ -70,9 +70,6 @@ func GetRootPath(name string) string {
 		}
 		user := m[1]
 		repo := m[2]
-		if len(user) == 0 {
-			user = "go-" + repo
-		}
 		return path.Join("gopkg.in", user, repo+"."+m[3])
 	}
 	return name
