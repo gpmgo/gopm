@@ -391,12 +391,41 @@ type ApiError struct {
 	Error string `json:"error"`
 }
 
+type ApiResponse struct {
+	Sha string `json:"sha"`
+}
+
 func init() {
 	zip.Verbose = false
 }
 
 // DownloadGopm downloads remote package from gopm registry.
 func (n *Node) DownloadGopm(ctx *cli.Context) error {
+	// Fetch latest version, check if package has been changed.
+	if n.Type == BRANCH && n.IsEmptyVal() {
+		resp, err := http.Get(fmt.Sprintf("%s%s?pkgname=%s",
+			setting.RegistryUrl, setting.URL_API_REVISION, n.RootPath))
+		if err != nil {
+			return fmt.Errorf("fail to make request: %v", err)
+		}
+		if resp.StatusCode != 200 {
+			var apiErr ApiError
+			if err = json.NewDecoder(resp.Body).Decode(&apiErr); err != nil {
+				return fmt.Errorf("fail to decode response JSON: %v", err)
+			}
+			return errors.New(apiErr.Error)
+		}
+		var apiResp ApiResponse
+		if err = json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+			return fmt.Errorf("fail to decode response JSON: %v", err)
+		}
+		if n.Revision == apiResp.Sha {
+			log.Info("Package(%s) hasn't been changed", n.RootPath)
+			return nil
+		}
+		n.Revision = apiResp.Sha
+	}
+
 	resp, err := http.Get(fmt.Sprintf("%s%s?pkgname=%s&revision=%s",
 		setting.RegistryUrl, setting.URL_API_DOWNLOAD, n.RootPath, n.Value))
 	if err != nil {
@@ -445,6 +474,5 @@ func (n *Node) DownloadGopm(ctx *cli.Context) error {
 		n.InstallPath); err != nil {
 		return fmt.Errorf("fail to rename directory: %v", err)
 	}
-	// fmt.Println(rootDir)
 	return nil
 }

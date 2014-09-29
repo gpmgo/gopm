@@ -35,7 +35,7 @@ type Option struct {
 }
 
 const (
-	VERSION     = 201409280
+	VERSION     = 201409290
 	VENDOR      = ".vendor"
 	GOPMFILE    = ".gopmfile"
 	PKGNAMELIST = "pkgname.list"
@@ -44,6 +44,7 @@ const (
 
 const (
 	URL_API_DOWNLOAD = "/api/v1/download"
+	URL_API_REVISION = "/api/v1/revision"
 )
 
 var (
