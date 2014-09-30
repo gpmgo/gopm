@@ -19,11 +19,14 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/gpmgo/gopm/modules/base"
 	"github.com/gpmgo/gopm/modules/cli"
+	"github.com/gpmgo/gopm/modules/doc"
+	"github.com/gpmgo/gopm/modules/goconfig"
 	"github.com/gpmgo/gopm/modules/log"
 	"github.com/gpmgo/gopm/modules/setting"
 )
@@ -56,6 +59,7 @@ func setup(ctx *cli.Context) (err error) {
 		}
 		setting.WorkDir = strings.Replace(setting.WorkDir, "\\", "/", -1)
 	}
+	setting.DefaultGopmfile = path.Join(setting.WorkDir, setting.GOPMFILE)
 	setting.DefaultVendor = path.Join(setting.WorkDir, setting.VENDOR)
 	setting.DefaultVendorSrc = path.Join(setting.DefaultVendor, "src")
 
@@ -117,6 +121,18 @@ func setup(ctx *cli.Context) (err error) {
 		return err
 	}
 	return nil
+}
+
+func parseGopmfile(fileName string) (*goconfig.ConfigFile, string, error) {
+	gf, err := setting.LoadGopmfile(fileName)
+	if err != nil {
+		return nil, "", err
+	}
+	target := doc.ParseTarget(gf.MustValue("target", "path"))
+	if target == "." {
+		_, target = filepath.Split(setting.WorkDir)
+	}
+	return gf, target, nil
 }
 
 func autoLink(oldPath, newPath string) error {

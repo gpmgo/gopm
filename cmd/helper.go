@@ -21,5 +21,6 @@ import (
 )
 
 func makeLink(srcPath, destPath string) error {
+	os.Remove(destPath)
 	return os.Symlink(srcPath, destPath)
 }

@@ -35,7 +35,7 @@ type Option struct {
 }
 
 const (
-	VERSION     = 201409290
+	VERSION     = 201409300
 	VENDOR      = ".vendor"
 	GOPMFILE    = ".gopmfile"
 	PKGNAMELIST = "pkgname.list"
@@ -53,6 +53,7 @@ var (
 	WorkDir          string // The path of gopm was executed.
 	PkgNameListFile  string
 	LocalNodesFile   string
+	DefaultGopmfile  string
 	DefaultVendor    string
 	DefaultVendorSrc string
 	InstallRepoPath  string // The gopm local repository.

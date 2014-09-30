@@ -34,6 +34,7 @@ func makeLink(srcPath, destPath string) error {
 
 	// Check if Windows version is XP.
 	if getWindowsVersion() >= 6 {
+		os.Remove(destPath)
 		_, stderr, err := com.ExecCmd("cmd", "/c", "mklink", "/j", destPath, srcPath)
 		if err != nil {
 			return errors.New(stderr)
@@ -59,7 +60,6 @@ func makeLink(srcPath, destPath string) error {
 		}
 	}
 	os.RemoveAll(destPath)
-
 	return com.CopyDir(srcPath, destPath, func(filePath string) bool {
 		return strings.Contains(filePath, setting.VENDOR)
 	})

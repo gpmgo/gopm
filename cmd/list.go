@@ -16,9 +16,7 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -47,18 +45,6 @@ Make sure you run this command in the root path of a go project.`,
 	},
 }
 
-func parseGopmfile(fileName string) (*goconfig.ConfigFile, string, error) {
-	gf, err := setting.LoadGopmfile(fileName)
-	if err != nil {
-		return nil, "", err
-	}
-	target := doc.ParseTarget(gf.MustValue("target", "path"))
-	if target == "." {
-		_, target = filepath.Split(setting.WorkDir)
-	}
-	return gf, target, nil
-}
-
 func verSuffix(gf *goconfig.ConfigFile, name string) string {
 	val := gf.MustValue("deps", name)
 	if len(val) > 0 {
@@ -73,11 +59,6 @@ func getDepList(ctx *cli.Context, target, pkgPath, vendor string) ([]string, err
 	rootPath := doc.GetRootPath(target)
 	// If work directory is not in GOPATH, then need to setup a vendor path.
 	if !setting.HasGOPATHSetting || !strings.HasPrefix(pkgPath, setting.InstallGopath) {
-		os.RemoveAll(vendorSrc)
-		if !setting.Debug {
-			defer os.RemoveAll(vendor)
-		}
-
 		// Make link of self.
 		log.Debug("Linking %s...", rootPath)
 		from := pkgPath
@@ -112,19 +93,15 @@ func runList(ctx *cli.Context) {
 		return
 	}
 
-	gfPath := path.Join(setting.WorkDir, setting.GOPMFILE)
-	if !setting.HasGOPATHSetting && !base.IsFile(gfPath) {
+	if !setting.HasGOPATHSetting && !base.IsFile(setting.DefaultGopmfile) {
 		log.Warn("Dependency list may contain package itself without GOPATH setting and gopmfile.")
 	}
-	gf, target, err := parseGopmfile(gfPath)
+	gf, target, err := parseGopmfile(setting.DefaultGopmfile)
 	if err != nil {
 		errors.SetError(err)
 		return
 	}
 
-	defer func() {
-		os.RemoveAll(setting.DefaultVendor)
-	}()
 	list, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor)
 	if err != nil {
 		errors.SetError(err)
