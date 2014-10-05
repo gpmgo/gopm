@@ -1,4 +1,4 @@
-Go Package Manager [![wercker status](https://app.wercker.com/status/899e79d6738e606dab98c915a269d531/s/ "wercker status")](https://app.wercker.com/project/bykey/899e79d6738e606dab98c915a269d531)
+Go Package Manager [![wercker status](https://app.wercker.com/status/899e79d6738e606dab98c915a269d531/s/ "wercker status")](https://app.wercker.com/project/bykey/899e79d6738e606dab98c915a269d531) [![Gopm Download](http://gopm.io/badge/github.com/gpmgo/gopm)](http://gopm.io/github.com/gpmgo/gopm)
 =========================
 
 Gopm(Go Package Manager) is a Go package manage and build tool for Go.

@@ -68,6 +68,14 @@ func runBin(ctx *cli.Context) {
 		return
 	}
 
+	// Backup exsited .vendor.
+	if base.IsExist(setting.VENDOR) {
+		os.Rename(setting.VENDOR, setting.VENDOR+".bak")
+		defer func() {
+			os.Rename(setting.VENDOR+".bak", setting.VENDOR)
+		}()
+	}
+
 	// Parse package version.
 	info := ctx.Args().First()
 	pkgPath := info
@@ -114,6 +122,7 @@ func runBin(ctx *cli.Context) {
 		errors.SetError(fmt.Errorf("Fail to link slef: %v", err))
 		return
 	}
+
 	os.Chdir(tmpVendor)
 	oldWorkDir := setting.WorkDir
 	setting.WorkDir = path.Join(setting.WorkDir, tmpVendor)
