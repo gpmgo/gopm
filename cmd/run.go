@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path"
 	"strings"
 
@@ -177,11 +176,6 @@ func runRun(ctx *cli.Context) {
 	if err := setup(ctx); err != nil {
 		errors.SetError(err)
 		return
-	}
-
-	os.RemoveAll(setting.DefaultVendor)
-	if !setting.Debug {
-		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
 	if err := linkVendors(ctx, ""); err != nil {
