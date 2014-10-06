@@ -86,10 +86,6 @@ func runBuild(ctx *cli.Context) {
 		return
 	}
 
-	os.RemoveAll(setting.DefaultVendor)
-	if !setting.Debug {
-		defer os.RemoveAll(setting.DefaultVendor)
-	}
 	if err := buildBinary(ctx, ctx.Args()...); err != nil {
 		errors.SetError(err)
 		return

@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path"
 
 	"github.com/gpmgo/gopm/modules/cli"
@@ -47,11 +46,6 @@ func runInstall(ctx *cli.Context) {
 	if err := setup(ctx); err != nil {
 		errors.SetError(err)
 		return
-	}
-
-	os.RemoveAll(setting.DefaultVendor)
-	if !setting.Debug {
-		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
 	if err := linkVendors(ctx, ""); err != nil {

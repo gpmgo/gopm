@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"os"
+	"path"
 
 	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/errors"
@@ -40,5 +41,5 @@ func runClean(ctx *cli.Context) {
 		return
 	}
 
-	os.RemoveAll(setting.DefaultVendor)
+	os.RemoveAll(path.Join(setting.HomeDir, ".gopm/temp"))
 }

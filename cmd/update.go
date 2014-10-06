@@ -90,7 +90,10 @@ func runUpdate(ctx *cli.Context) {
 		errors.SetError(fmt.Errorf("Library mode does not support update command"))
 		return
 	}
-	setup(ctx)
+	if err := setup(ctx); err != nil {
+		errors.SetError(err)
+		return
+	}
 
 	isAnythingUpdated := false
 	localVerInfo := loadLocalVerInfo()

@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/gpmgo/gopm/modules/cli"
 	"github.com/gpmgo/gopm/modules/errors"
@@ -42,11 +41,6 @@ func runTest(ctx *cli.Context) {
 	if err := setup(ctx); err != nil {
 		errors.SetError(err)
 		return
-	}
-
-	os.RemoveAll(setting.DefaultVendor)
-	if !setting.Debug {
-		defer os.RemoveAll(setting.DefaultVendor)
 	}
 
 	if err := linkVendors(ctx, ""); err != nil {
