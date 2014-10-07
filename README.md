@@ -15,7 +15,7 @@ Please see **[Documentation](https://github.com/gpmgo/docs)** before you ever st
 
 ## Installation
 
-We use [gobuild](http://build.gopm.io) to do online cross-platform compile work, you can see the full available binary list [here](http://gobuild.io/download/github.com/gpmgo/gopm).
+We use [gobuild](http://gobuild.io) to do online cross-platform compile work, you can see the full available binary list [here](http://gobuild.io/github.com/gpmgo/gopm).
 
 ### Install from source code
 
