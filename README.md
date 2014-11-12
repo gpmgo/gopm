@@ -1,13 +1,13 @@
 Go Package Manager [![wercker status](https://app.wercker.com/status/899e79d6738e606dab98c915a269d531/s/ "wercker status")](https://app.wercker.com/project/bykey/899e79d6738e606dab98c915a269d531) [![Gopm Download](http://gopm.io/badge/github.com/gpmgo/gopm)](http://gopm.io/github.com/gpmgo/gopm)
 =========================
 
-Gopm(Go Package Manager) is a Go package manage and build tool for Go.
+Go Package Manager (gopm) is a package manager and build tool for Go.
 
-**News** Give a shoot for [Gopm.io](http://gopm.io) for versioning caching and delivering Go package service.
+**News** Try out [Gopm.io](http://gopm.io), the online version caching and package download service for Go.
 
-**News** Want online cross-compile and download service? Just try [GoBuild.io](http://gobuild.io) and it won't let you down! BTW, it's powered by Gopm.
+**News** Want an online cross-compile and download service? Try [GoBuild.io](http://gobuild.io) and it won't let you down! BTW, it's powered by Gopm.
 
-Please see **[Documentation](https://github.com/gpmgo/docs)** before you ever start.
+Please see **[Documentation](https://github.com/gpmgo/docs)** before you start.
 
 ## Requirements
 
@@ -15,11 +15,11 @@ Please see **[Documentation](https://github.com/gpmgo/docs)** before you ever st
 
 ## Installation
 
-We use [gobuild](http://gobuild.io) to do online cross-platform compile work, you can see the full available binary list [here](http://gobuild.io/github.com/gpmgo/gopm).
+We use [gobuild](http://gobuild.io) to do online cross-platform compiling work.  You can see the full available binary list [here](http://gobuild.io/github.com/gpmgo/gopm).
 
 ### Install from source code
 
-	go get -u github.com/gpmgo/gopm
+    go get -u github.com/gpmgo/gopm
 
 The executable will be produced under `$GOPATH/bin` in your file system; for global use purpose, we recommand you to add this path into your `PATH` environment variable.
 
@@ -27,8 +27,8 @@ The executable will be produced under `$GOPATH/bin` in your file system; for glo
 
 - No requirement for installing any version control system tool like `git`, `svn` or `hg` in order to download packages.
 - Download, install or build your packages with specific revisions.
-- When build program with `gopm build` or `gopm install`, everything just happen in its own GOPATH and do not bother anything you've done unless you told to.
-- Put your Go projects on anywhere you want(through `.gopmfile`).
+- When building programs with `gopm build` or `gopm install`, everything just happens in its own GOPATH and does not bother anything you've done (unless you told it to).
+- Can put your Go projects anywhere you want (through `.gopmfile`).
 
 ## Commands
 
@@ -66,4 +66,4 @@ GLOBAL OPTIONS:
 
 ## License
 
-This project is under Apache v2 License. See the [LICENSE](LICENSE) file for the full license text.
+This project is under the Apache v2 License. See the [LICENSE](LICENSE) file for the full license text.
