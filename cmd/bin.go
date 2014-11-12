@@ -177,7 +177,7 @@ func runBin(ctx *cli.Context) {
 	movePath := oldWorkDir
 	if ctx.IsSet("dir") {
 		movePath = ctx.String("dir")
-	} else if strings.HasPrefix(n.ImportPath, "code.google.com/p/go.tools/cmd/") {
+	} else if strings.HasPrefix(n.ImportPath, "golang.org/x/tools/cmd/") {
 		movePath = path.Join(runtime.GOROOT(), "pkg/tool", runtime.GOOS+"_"+runtime.GOARCH)
 		log.Info("Command executed successfully!")
 		fmt.Println("Binary has been built into: " + movePath)

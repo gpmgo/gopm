@@ -77,7 +77,8 @@ func GetRootPath(name string) string {
 
 // IsGoRepoPath returns true if package is from standard library.
 func IsGoRepoPath(name string) bool {
-	return base.IsDir(path.Join(runtime.GOROOT(), "src/pkg", name))
+	return base.IsDir(path.Join(runtime.GOROOT(), "src/pkg", name)) ||
+		base.IsDir(path.Join(runtime.GOROOT(), "src", name))
 }
 
 // ListImports checks and returns a list of imports of given import path and options.

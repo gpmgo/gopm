@@ -35,7 +35,7 @@ type Option struct {
 }
 
 const (
-	VERSION     = 201410090
+	VERSION     = 201411120
 	VENDOR      = ".vendor"
 	GOPMFILE    = ".gopmfile"
 	PKGNAMELIST = "pkgname.list"
@@ -86,6 +86,7 @@ var (
 		"gitcafe.com":     3,
 		"launchpad.net":   2,
 		"labix.org":       3,
+		"golang.org":      3,
 	}
 	CommonRes = []string{"views", "templates", "static", "public", "conf"}
 )

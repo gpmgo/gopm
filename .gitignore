@@ -5,3 +5,5 @@ repos/
 vendor/
 .vendor/
 .idea/
+gopm.sublime-project
+gopm.sublime-workspace
