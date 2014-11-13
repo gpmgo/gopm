@@ -167,8 +167,8 @@ func runBin(ctx *cli.Context) {
 	}
 
 	// Because build command moved binary to root path.
-	binName := path.Base(n.RootPath)
-	binPath := path.Join(setting.DefaultVendor, "bin", path.Base(n.RootPath))
+	binName := path.Base(n.ImportPath)
+	binPath := path.Join(setting.DefaultVendor, "bin", path.Base(n.ImportPath))
 	if runtime.GOOS == "windows" {
 		binName += ".exe"
 	}
@@ -179,9 +179,11 @@ func runBin(ctx *cli.Context) {
 		movePath = ctx.String("dir")
 	} else if strings.HasPrefix(n.ImportPath, "golang.org/x/tools/cmd/") {
 		movePath = path.Join(runtime.GOROOT(), "pkg/tool", runtime.GOOS+"_"+runtime.GOARCH)
-		log.Info("Command executed successfully!")
-		fmt.Println("Binary has been built into: " + movePath)
-		return
+		if !base.IsExist(binPath) {
+			log.Info("Command executed successfully!")
+			fmt.Println("Binary has been built into: " + movePath)
+			return
+		}
 	}
 
 	if !base.IsFile(binPath) {
