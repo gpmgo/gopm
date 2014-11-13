@@ -108,16 +108,16 @@ func runUpdate(ctx *cli.Context) {
 	if remoteVerInfo.PackageNameList > localVerInfo.PackageNameList {
 		log.Info("Updating pkgname.list...%v > %v",
 			localVerInfo.PackageNameList, remoteVerInfo.PackageNameList)
-		data, err := base.HttpGetBytes(doc.HttpClient, "https://raw2.github.com/gpmgo/docs/master/pkgname.list", nil)
+		data, err := base.HttpGetBytes(doc.HttpClient, "https://raw.githubusercontent.com/gpmgo/docs/master/pkgname.list", nil)
 		if err != nil {
-			log.Fatal("Fail to update pkgname.list: %v", err)
+			log.Warn("Fail to update pkgname.list: %v", err)
+		} else {
+			if err = ioutil.WriteFile(setting.PkgNameListFile, data, os.ModePerm); err != nil {
+				log.Fatal("Fail to save pkgname.list: %v", err)
+			}
+			log.Info("Update pkgname.list to %v succeed!", remoteVerInfo.PackageNameList)
+			isAnythingUpdated = true
 		}
-
-		if err = ioutil.WriteFile(setting.PkgNameListFile, data, os.ModePerm); err != nil {
-			log.Fatal("Fail to save pkgname.list: %v", err)
-		}
-		log.Info("Update pkgname.list to %v succeed!", remoteVerInfo.PackageNameList)
-		isAnythingUpdated = true
 	}
 
 	// Gopm.
