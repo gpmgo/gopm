@@ -115,6 +115,7 @@ func linkVendors(ctx *cli.Context, optTarget string) error {
 		stack[i] = doc.NewPkg(name, tp, val)
 	}
 
+	// FIXME: at least link once, need a set
 	lastIdx := len(stack) - 1
 	for lastIdx >= 0 {
 		pkg := stack[lastIdx]
