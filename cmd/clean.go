@@ -31,6 +31,7 @@ var CmdClean = cli.Command{
 gopm clean`,
 	Action: runClean,
 	Flags: []cli.Flag{
+		cli.BoolFlag{"all, a", "delete all files in local repository", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
@@ -42,4 +43,7 @@ func runClean(ctx *cli.Context) {
 	}
 
 	os.RemoveAll(path.Join(setting.HomeDir, ".gopm/temp"))
+	if ctx.Bool("all") {
+		os.RemoveAll(setting.InstallRepoPath)
+	}
 }

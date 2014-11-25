@@ -40,7 +40,7 @@ USAGE:
    Gopm [global options] command [command options] [arguments...]
 
 VERSION:
-   0.8.5.1112 Beta
+   0.8.5.1125 Beta
 
 COMMANDS:
    list		list all dependencies of current project
