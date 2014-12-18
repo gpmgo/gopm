@@ -39,6 +39,7 @@ gopm build <go build commands>`,
 		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
 		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
+		cli.StringFlag{"o", "output", "specifies the output file name", ""},
 	},
 }
 
@@ -56,6 +57,10 @@ func buildBinary(ctx *cli.Context, args ...string) error {
 
 	cmdArgs := []string{"go", "build"}
 	cmdArgs = append(cmdArgs, args...)
+	if len(ctx.String("o")) > 0 {
+		cmdArgs = append(cmdArgs, "-o")
+		cmdArgs = append(cmdArgs, ctx.String("o"))
+	}
 	if len(ctx.String("tags")) > 0 {
 		cmdArgs = append(cmdArgs, "-tags")
 		cmdArgs = append(cmdArgs, ctx.String("tags"))
