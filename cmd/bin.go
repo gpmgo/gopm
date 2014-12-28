@@ -117,6 +117,11 @@ func runBin(ctx *cli.Context) {
 	tmpVendor := path.Join("vendor", path.Base(n.RootPath))
 	os.RemoveAll(tmpVendor)
 	os.RemoveAll(setting.VENDOR)
+	defer func() {
+		os.RemoveAll(tmpVendor)
+		os.RemoveAll(setting.VENDOR)
+	}()
+
 	// FIXME: should use .gopm/temp path.
 	if err := autoLink(n.InstallPath, tmpVendor); err != nil {
 		errors.SetError(fmt.Errorf("Fail to link slef: %v", err))

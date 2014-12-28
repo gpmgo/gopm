@@ -53,7 +53,7 @@ type version struct {
 }
 
 func loadLocalVerInfo() (ver version) {
-	verPath := path.Join(setting.HomeDir, setting.VERINFO)
+	verPath := path.Join(setting.HomeDir, ".gopm", setting.VERINFO)
 
 	// First time run should not exist.
 	if !base.IsExist(verPath) {
@@ -195,7 +195,7 @@ func runUpdate(ctx *cli.Context) {
 
 	if isAnythingUpdated {
 		// Save JSON.
-		verPath := path.Join(setting.HomeDir, setting.VERINFO)
+		verPath := path.Join(setting.HomeDir, ".gopm", setting.VERINFO)
 		os.MkdirAll(path.Dir(verPath), os.ModePerm)
 		f, err := os.Create(verPath)
 		if err != nil {
