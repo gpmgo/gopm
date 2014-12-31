@@ -658,6 +658,11 @@ func IsValidRemotePath(importPath string) bool {
 	return true
 }
 
+func IsGoTool(path string) bool {
+	return strings.HasPrefix(path, "golang.org/x/tools/cmd/") ||
+		strings.HasPrefix(path, "code.google.com/p/go.tools/cmd/")
+}
+
 // Convert string to specify type.
 type StrTo string
 

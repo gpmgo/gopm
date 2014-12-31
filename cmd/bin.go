@@ -182,7 +182,7 @@ func runBin(ctx *cli.Context) {
 	movePath := oldWorkDir
 	if ctx.IsSet("dir") {
 		movePath = ctx.String("dir")
-	} else if strings.HasPrefix(n.ImportPath, "golang.org/x/tools/cmd/") {
+	} else if base.IsGoTool(n.ImportPath) {
 		movePath = path.Join(runtime.GOROOT(), "pkg/tool", runtime.GOOS+"_"+runtime.GOARCH)
 		if !base.IsExist(binPath) {
 			log.Info("Command executed successfully!")

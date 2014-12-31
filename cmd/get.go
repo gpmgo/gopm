@@ -68,6 +68,8 @@ var (
 
 // downloadPackage downloads package either use version control tools or not.
 func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error) {
+
+	// fmt.Println(n.VerString())
 	log.Info("Downloading package: %s", n.VerString())
 	downloadCache.Set(n.VerString())
 
