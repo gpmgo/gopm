@@ -39,6 +39,7 @@ Make sure you run this command in the root path of a go project.`,
 		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"local, l", "generate local GOPATH directories", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
+		cli.BoolFlag{"test, t", "include test dependencies", ""},
 	},
 }
 
