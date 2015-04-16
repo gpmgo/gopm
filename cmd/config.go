@@ -24,8 +24,8 @@ import (
 
 var CmdConfig = cli.Command{
 	Name:  "config",
-	Usage: "configurate gopm settings",
-	Description: `Command config configurates gopm settings
+	Usage: "configure gopm settings",
+	Description: `Command config configures gopm settings
 
 gopm config set proxy http://<username:password>@server:port
 gopm config github [client_id] [client_secret]

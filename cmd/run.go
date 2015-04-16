@@ -97,7 +97,7 @@ func linkVendors(ctx *cli.Context, optTarget string) error {
 		return fmt.Errorf("fail to link self: %v", err)
 	}
 
-	// Check and loads dependency pakcages.
+	// Check and loads dependency packages.
 	log.Debug("Loading dependencies...")
 	imports, err := doc.ListImports(target, rootPath, setting.DefaultVendor, setting.WorkDir, ctx.String("tags"), ctx.Bool("test"))
 	if err != nil {

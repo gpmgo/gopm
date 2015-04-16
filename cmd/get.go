@@ -33,7 +33,7 @@ var CmdGet = cli.Command{
 	Name:  "get",
 	Usage: "fetch remote package(s) and dependencies",
 	Description: `Command get fetches a package or packages, 
-and any pakcage that it or they depend(s) on. 
+and any package that it or they depend(s) on. 
 If the package has a gopmfile, the fetch process will be driven by that.
 
 gopm get
@@ -49,10 +49,10 @@ then all the packages go into gopm local repository.`,
 	Flags: []cli.Flag{
 		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.BoolFlag{"download, d", "download given package only", ""},
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
+		cli.BoolFlag{"update, u", "update package(s) and dependencies if any", ""},
 		cli.BoolFlag{"local, l", "download all packages to local GOPATH", ""},
-		cli.BoolFlag{"gopath, g", "download all pakcages to GOPATH", ""},
-		cli.BoolFlag{"remote, r", "download all pakcages to gopm local repository", ""},
+		cli.BoolFlag{"gopath, g", "download all packages to GOPATH", ""},
+		cli.BoolFlag{"remote, r", "download all packages to gopm local repository", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
