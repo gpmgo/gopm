@@ -47,7 +47,7 @@ COMMANDS:
    gen		generate a gopmfile for current Go project
    get		fetch remote package(s) and dependencies
    bin		download and link dependencies and build binary
-   config	configurate gopm settings
+   config	configure gopm settings
    run		link dependencies and go run
    test		link dependencies and go test
    build	link dependencies and go build

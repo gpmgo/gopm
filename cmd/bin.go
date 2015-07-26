@@ -45,8 +45,8 @@ contain main package`,
 	Flags: []cli.Flag{
 		cli.StringFlag{"tags", "", "apply build tags", ""},
 		cli.StringFlag{"dir, d", "./", "build binary to given directory", ""},
-		cli.BoolFlag{"update, u", "update pakcage(s) and dependencies if any", ""},
-		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
+		cli.BoolFlag{"update, u", "update package(s) and dependencies if any", ""},
+		cli.BoolFlag{"remote, r", "build with packages in gopm local repository only", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }

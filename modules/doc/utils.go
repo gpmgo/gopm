@@ -248,7 +248,7 @@ func ListImports(importPath, rootPath, vendorPath, srcPath, tags string, isTest 
 	if setting.Debug {
 		log.Debug("Import/root path: %s : %s", importPath, rootPath)
 		log.Debug("Context GOPATH: %s", ctxt.GOPATH)
-		log.Debug("Srouce path: %s", srcPath)
+		log.Debug("Source path: %s", srcPath)
 	}
 	pkg, err := ctxt.Import(importPath, srcPath, build.AllowBinary)
 	if err != nil {

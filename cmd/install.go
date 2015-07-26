@@ -37,7 +37,7 @@ If no argument is supplied, then gopmfile must be present`,
 	Flags: []cli.Flag{
 		cli.StringFlag{"tags", "", "apply build tags", ""},
 		// cli.BoolFlag{"package, p", "only install non-main packages", ""},
-		cli.BoolFlag{"remote, r", "build with pakcages in gopm local repository only", ""},
+		cli.BoolFlag{"remote, r", "build with packages in gopm local repository only", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
 	},
 }
