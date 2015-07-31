@@ -160,6 +160,10 @@ func linkVendors(ctx *cli.Context, optTarget string) error {
 			errors.SetError(err)
 		}
 		for _, name := range imports {
+			if name == "C" {
+				continue
+			}
+
 			name := doc.GetRootPath(name)
 			tp, val, err := validPkgInfo(gf.MustValue("deps", name))
 			if err != nil {
