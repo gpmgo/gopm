@@ -55,6 +55,9 @@ func runTest(ctx *cli.Context) {
 		cmdArgs = append(cmdArgs, "-tags")
 		cmdArgs = append(cmdArgs, ctx.String("tags"))
 	}
+	if ctx.IsSet("verbose") {
+		cmdArgs = append(cmdArgs, "-v")
+	}
 	cmdArgs = append(cmdArgs, ctx.Args()...)
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
 		errors.SetError(fmt.Errorf("fail to run program: %v", err))
