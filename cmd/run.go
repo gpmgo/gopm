@@ -59,10 +59,10 @@ func validPkgInfo(info string) (doc.RevisionType, string, error) {
 	}
 
 	infos := strings.Split(info, ":")
-	tp := doc.RevisionType(infos[0])
-	val := infos[1]
 
 	if len(infos) == 2 {
+		tp := doc.RevisionType(infos[0])
+		val := infos[1]
 		switch tp {
 		case doc.BRANCH, doc.COMMIT, doc.TAG:
 		default:
