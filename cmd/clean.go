@@ -44,6 +44,7 @@ func runClean(ctx *cli.Context) {
 
 	os.RemoveAll(path.Join(setting.HomeDir, ".gopm/temp"))
 	if ctx.Bool("all") {
+		os.Remove(path.Join(setting.HomeDir, ".gopm/data/localnodes.list"))
 		os.RemoveAll(setting.InstallRepoPath)
 	}
 }
