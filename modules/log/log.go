@@ -53,42 +53,27 @@ func Print(level int, format string, args ...interface{}) {
 		return
 	}
 
-	if NonColor {
-		fmt.Fprintf(Output, "%s %s [%s] %s\n",
-			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
-			fmt.Sprintf(format, args...))
-		if level == FATAL {
-			os.Exit(1)
+	var logFormat = "%s %s [%s] %s\n"
+	if !NonColor {
+		switch level {
+		case DEBUG:
+			logFormat = "%s \033[36m%s\033[0m [\033[34m%s\033[0m] %s\n"
+		case INFO:
+			logFormat = "%s \033[36m%s\033[0m [\033[32m%s\033[0m] %s\n"
+		case WARNING:
+			logFormat = "%s \033[36m%s\033[0m [\033[33m%s\033[0m] %s\n"
+		case ERROR:
+			logFormat = "%s \033[36m%s\033[0m [\033[31m%s\033[0m] %s\n"
+		case FATAL:
+			logFormat = "%s \033[36m%s\033[0m [\033[35m%s\033[0m] %s\n"
 		}
-		return
 	}
 
-	switch level {
-	case DEBUG:
-		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[34m%s\033[0m] %s\n",
-			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
-			fmt.Sprintf(format, args...))
-	case INFO:
-		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[32m%s\033[0m] %s\n",
-			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
-			fmt.Sprintf(format, args...))
-	case WARNING:
-		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[33m%s\033[0m] %s\n",
-			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
-			fmt.Sprintf(format, args...))
-	case ERROR:
-		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[31m%s\033[0m] %s\n",
-			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
-			fmt.Sprintf(format, args...))
-	case FATAL:
-		fmt.Fprintf(Output, "%s \033[36m%s\033[0m [\033[35m%s\033[0m] %s\n",
-			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
-			fmt.Sprintf(format, args...))
+	fmt.Fprintf(Output, logFormat, PREFIX, time.Now().Format(TIME_FORMAT),
+		LEVEL_FLAGS[level], fmt.Sprintf(format, args...))
+
+	if level == FATAL {
 		os.Exit(1)
-	default:
-		fmt.Fprintf(Output, "%s %s [%s] %s\n",
-			PREFIX, time.Now().Format(TIME_FORMAT), LEVEL_FLAGS[level],
-			fmt.Sprintf(format, args...))
 	}
 }
 
