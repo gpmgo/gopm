@@ -35,7 +35,7 @@ type Option struct {
 }
 
 const (
-	VERSION     = 201412280
+	VERSION     = 201601050
 	VENDOR      = ".vendor"
 	GOPMFILE    = ".gopmfile"
 	PKGNAMELIST = "pkgname.list"

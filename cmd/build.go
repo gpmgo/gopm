@@ -55,16 +55,23 @@ func buildBinary(ctx *cli.Context, args ...string) error {
 
 	log.Info("Building...")
 
-	cmdArgs := []string{"go", "build"}
-	cmdArgs = append(cmdArgs, args...)
-	if len(ctx.String("o")) > 0 {
-		cmdArgs = append(cmdArgs, "-o")
+	cmdArgs := append([]string{"go", "build"}, args...)
+
+	// Set output binary name
+	cmdArgs = append(cmdArgs, "-o")
+	if ctx.IsSet("o") {
 		cmdArgs = append(cmdArgs, ctx.String("o"))
+	} else {
+		cmdArgs = append(cmdArgs, path.Base(target))
 	}
+
 	if len(ctx.String("tags")) > 0 {
 		cmdArgs = append(cmdArgs, "-tags")
 		cmdArgs = append(cmdArgs, ctx.String("tags"))
 	}
+
+	log.Debug("Args: %v", cmdArgs)
+
 	if err := execCmd(setting.DefaultVendor, setting.WorkDir, cmdArgs...); err != nil {
 		return fmt.Errorf("fail to build program: %v", err)
 	}
