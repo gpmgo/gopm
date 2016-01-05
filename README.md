@@ -1,11 +1,9 @@
-Go Package Manager [![wercker status](https://app.wercker.com/status/899e79d6738e606dab98c915a269d531/s/ "wercker status")](https://app.wercker.com/project/bykey/899e79d6738e606dab98c915a269d531) [![Gopm Download](http://gopm.io/badge/github.com/gpmgo/gopm)](http://gopm.io/github.com/gpmgo/gopm)
+Go Package Manager [![Build Status](https://travis-ci.org/gpmgo/gopm.svg?branch=master)](https://travis-ci.org/gpmgo/gopm) [![Gopm Download](http://gopm.io/badge/github.com/gpmgo/gopm)](http://gopm.io/github.com/gpmgo/gopm)
 =========================
 
-Go Package Manager (gopm) is a package manager and build tool for Go.
+Gopm (Go Package Manager) is a Go package manage and build tool for Go.
 
-**News** Try out [Gopm.io](http://gopm.io), the online version caching and package download service for Go.
-
-**News** Want an online cross-compile and download service? Try [GoBuild.io](http://gobuild.io) and it won't let you down! BTW, it's powered by Gopm.
+**News** Try out [gopm.io](http://gopm.io), the online version caching and package download service for Go.
 
 Please see **[Documentation](https://github.com/gpmgo/docs)** before you start.
 
@@ -25,7 +23,7 @@ The executable will be produced under `$GOPATH/bin` in your file system; for glo
 
 ## Features
 
-- No requirement for installing any version control system tool like `git`, `svn` or `hg` in order to download packages.
+- No requirement for installing any version control system tool like `git` or `hg` in order to download packages.
 - Download, install or build your packages with specific revisions.
 - When building programs with `gopm build` or `gopm install`, everything just happens in its own GOPATH and does not bother anything you've done (unless you told it to).
 - Can put your Go projects anywhere you want (through `.gopmfile`).
@@ -38,9 +36,6 @@ NAME:
 
 USAGE:
    Gopm [global options] command [command options] [arguments...]
-
-VERSION:
-   0.8.6.1025 Beta
 
 COMMANDS:
    list		list all dependencies of current project
@@ -66,4 +61,4 @@ GLOBAL OPTIONS:
 
 ## License
 
-This project is under the Apache v2 License. See the [LICENSE](LICENSE) file for the full license text.
+This project is under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for the full license text.
