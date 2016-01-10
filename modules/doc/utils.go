@@ -28,8 +28,8 @@ import (
 	"github.com/gpmgo/gopm/modules/setting"
 )
 
-// ParseTarget guesses import path of current package
-// if target is empty.
+// ParseTarget guesses import path of current package if target is empty,
+// otherwise simply returns the value it gets.
 func ParseTarget(target string) string {
 	if len(target) > 0 {
 		return target

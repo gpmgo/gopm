@@ -32,7 +32,7 @@ import (
 var CmdList = cli.Command{
 	Name:  "list",
 	Usage: "list all dependencies of current project",
-	Description: `Command list lsit all dependencies of current Go project
+	Description: `Command list lists all dependencies of current Go project
 
 gopm list
 
@@ -53,7 +53,7 @@ func verSuffix(gf *goconfig.ConfigFile, name string) string {
 	return val
 }
 
-// getDepList get list of dependencies in root path format and nature order.
+// getDepList gets list of dependencies in root path format and nature order.
 func getDepList(ctx *cli.Context, target, pkgPath, vendor string) ([]string, error) {
 	vendorSrc := path.Join(vendor, "src")
 	rootPath := doc.GetRootPath(target)
@@ -108,7 +108,7 @@ func runList(ctx *cli.Context) {
 		return
 	}
 
-	fmt.Printf("Dependency list(%d):\n", len(list))
+	fmt.Printf("Dependency list (%d):\n", len(list))
 	for _, name := range list {
 		fmt.Printf("-> %s%s\n", name, verSuffix(gf, name))
 	}

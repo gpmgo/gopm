@@ -279,7 +279,7 @@ func GetGOPATHs() []string {
 
 // HomeDir returns path of '~'(in Linux) on Windows,
 // it returns error when the variable does not exist.
-func HomeDir() (home string, err error) {
+func HomeDir() (home string, _ error) {
 	if runtime.GOOS == "windows" {
 		home = os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
 		if home == "" {
