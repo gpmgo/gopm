@@ -24,7 +24,7 @@ import (
 
 const (
 	PREFIX      = "[GOPM]"
-	TIME_FORMAT = "06-01-02 15:04:05"
+	TIME_FORMAT = "01-02 15:04:05"
 )
 
 var (

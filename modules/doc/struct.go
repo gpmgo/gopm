@@ -404,7 +404,7 @@ func (n *Node) DownloadGopm(ctx *cli.Context) error {
 	// Fetch latest version, check if package has been changed.
 	if n.Type == BRANCH && n.IsEmptyVal() {
 		resp, err := http.Get(fmt.Sprintf("%s%s?pkgname=%s",
-			setting.RegistryUrl, setting.URL_API_REVISION, n.RootPath))
+			setting.RegistryURL, setting.URL_API_REVISION, n.RootPath))
 		if err != nil {
 			return fmt.Errorf("fail to make request: %v", err)
 		}
@@ -427,7 +427,7 @@ func (n *Node) DownloadGopm(ctx *cli.Context) error {
 	}
 
 	resp, err := http.Get(fmt.Sprintf("%s%s?pkgname=%s&revision=%s",
-		setting.RegistryUrl, setting.URL_API_DOWNLOAD, n.RootPath, n.Value))
+		setting.RegistryURL, setting.URL_API_DOWNLOAD, n.RootPath, n.Value))
 	if err != nil {
 		return fmt.Errorf("fail to make request: %v", err)
 	}

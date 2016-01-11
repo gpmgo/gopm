@@ -78,7 +78,9 @@ func runGen(ctx *cli.Context) {
 				resList = append(resList, res)
 			}
 		}
-		gf.SetValue("res", "include", strings.Join(resList, "|"))
+		if len(resList) > 0 {
+			gf.SetValue("res", "include", strings.Join(resList, "|"))
+		}
 	}
 
 	if err = setting.SaveGopmfile(gf, gfPath); err != nil {

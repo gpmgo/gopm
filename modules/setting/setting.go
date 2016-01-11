@@ -59,7 +59,7 @@ var (
 	InstallRepoPath  string // The gopm local repository.
 	InstallGopath    string
 	HttpProxy        string
-	RegistryUrl      string = "http://gopm.io"
+	RegistryURL      string = "https://gopm.io"
 
 	// System settings.
 	IsWindows        bool
@@ -80,12 +80,9 @@ var (
 	// TODO: configurable.
 	RootPathPairs = map[string]int{
 		"github.com":      3,
-		"code.google.com": 3,
 		"bitbucket.org":   3,
 		"git.oschina.net": 3,
-		"gitcafe.com":     3,
 		"launchpad.net":   2,
-		"labix.org":       3,
 		"golang.org":      3,
 	}
 	CommonRes = []string{"views", "templates", "static", "public", "conf"}
