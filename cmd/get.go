@@ -356,6 +356,7 @@ func runGet(ctx *cli.Context) {
 		errors.SetError(err)
 		return
 	}
+
 	if len(ctx.Args()) > 0 && ctx.Bool("save") {
 		gf, _, err := parseGopmfile(setting.GOPMFILE)
 		if err != nil {
