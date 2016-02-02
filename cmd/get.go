@@ -32,8 +32,8 @@ import (
 var CmdGet = cli.Command{
 	Name:  "get",
 	Usage: "fetch remote package(s) and dependencies",
-	Description: `Command get fetches a package or packages, 
-and any package that it or they depend(s) on. 
+	Description: `Command get fetches a package or packages,
+and any package that it or they depend(s) on.
 If the package has a gopmfile, the fetch process will be driven by that.
 
 gopm get
@@ -43,7 +43,7 @@ gopm get <package name>@[<tag|commit|branch>:<value>]
 Can specify one or more: gopm get cli@tag:v1.2.0 github.com/Unknwon/macaron
 
 If no version specified and package exists in GOPATH,
-it will be skipped, unless user enabled '--remote, -r' option 
+it will be skipped, unless user enabled '--remote, -r' option
 then all the packages go into gopm local repository.`,
 	Action: runGet,
 	Flags: []cli.Flag{
@@ -54,6 +54,7 @@ then all the packages go into gopm local repository.`,
 		cli.BoolFlag{"gopath, g", "download all packages to GOPATH", ""},
 		cli.BoolFlag{"remote, r", "download all packages to gopm local repository", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
+		cli.BoolFlag{"save, s", "save dependency to gonpmfile", ""},
 	},
 }
 
@@ -353,5 +354,22 @@ func runGet(ctx *cli.Context) {
 	}
 	if err != nil {
 		errors.SetError(err)
+		return
+	}
+	if len(ctx.Args()) > 0 && ctx.Bool("save") {
+		gf, _, err := parseGopmfile(setting.GOPMFILE)
+		if err != nil {
+			errors.SetError(err)
+			return
+		}
+
+		for _, info := range ctx.Args() {
+			if i := strings.Index(info, "@"); i > -1 {
+				gf.SetValue("deps", info[:i], info[i+1:])
+			} else {
+				gf.SetValue("deps", info, "")
+			}
+		}
+		setting.SaveGopmfile(gf, setting.GOPMFILE)
 	}
 }
