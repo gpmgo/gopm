@@ -54,7 +54,7 @@ then all the packages go into gopm local repository.`,
 		cli.BoolFlag{"gopath, g", "download all packages to GOPATH", ""},
 		cli.BoolFlag{"remote, r", "download all packages to gopm local repository", ""},
 		cli.BoolFlag{"verbose, v", "show process details", ""},
-		cli.BoolFlag{"save, s", "save dependency to gonpmfile", ""},
+		cli.BoolFlag{"save, s", "save dependency to gopmfile", ""},
 	},
 }
 
