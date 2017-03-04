@@ -55,7 +55,7 @@ func buildBinary(ctx *cli.Context, args ...string) error {
 
 	log.Info("Building...")
 
-	cmdArgs := append([]string{"go", "build"}, args...)
+	cmdArgs := append([]string{"go", "build"})
 
 	// Set output binary name
 	cmdArgs = append(cmdArgs, "-o")
@@ -69,6 +69,8 @@ func buildBinary(ctx *cli.Context, args ...string) error {
 		cmdArgs = append(cmdArgs, "-tags")
 		cmdArgs = append(cmdArgs, ctx.String("tags"))
 	}
+
+	cmdArgs = append(cmdArgs, args...)
 
 	log.Debug("Args: %v", cmdArgs)
 
