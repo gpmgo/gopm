@@ -19,7 +19,7 @@ We use [gobuild](http://gobuild.io) to do online cross-platform compiling work. 
 
     go get -u github.com/gpmgo/gopm
 
-The executable will be produced under `$GOPATH/bin` in your file system; for global use purpose, we recommand you to add this path into your `PATH` environment variable.
+The executable will be produced under `$GOPATH/bin` in your file system; for global use purpose, we recommend you to add this path into your `PATH` environment variable.
 
 ## Features
 
