@@ -31,7 +31,7 @@ var (
 	Verbose, NonColor bool
 	Output            io.Writer = os.Stdout
 
-	LEVEL_FLAGS = [...]string{"DEBUG", " INFO", " WARN", "ERROR", "FATAL"}
+	LEVEL_FLAGS = [...]string{"DEBUG", "INFO", "WARN", "ERROR", "FATAL"}
 )
 
 func init() {
