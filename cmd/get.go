@@ -64,7 +64,7 @@ var (
 	skipCache     = base.NewSafeMap()
 	copyCache     = base.NewSafeMap()
 	downloadCount int
-	failConut     int
+	failCount     int
 )
 
 // downloadPackage downloads package either use version control tools or not.
@@ -97,7 +97,7 @@ func downloadPackage(ctx *cli.Context, n *doc.Node) (*doc.Node, []string, error)
 			n.Revision = setting.LocalNodes.MustValue(n.RootPath, "value")
 			if err = n.DownloadGopm(ctx); err != nil {
 				errors.AppendError(errors.NewErrDownload(n.ImportPath + ": " + err.Error()))
-				failConut++
+				failCount++
 				os.RemoveAll(n.InstallPath)
 				return nil, nil, nil
 			}
@@ -131,7 +131,7 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 				errors.AppendError(errors.NewErrInvalidPackage(n.VerString()))
 			}
 			log.Error("Skipped invalid package: " + n.VerString())
-			failConut++
+			failCount++
 			continue
 		}
 
@@ -250,8 +250,8 @@ func getPackages(target string, ctx *cli.Context, nodes []*doc.Node) error {
 		return err
 	}
 
-	log.Info("%d package(s) downloaded, %d failed", downloadCount, failConut)
-	if ctx.GlobalBool("strict") && failConut > 0 && !setting.LibraryMode {
+	log.Info("%d package(s) downloaded, %d failed", downloadCount, failCount)
+	if ctx.GlobalBool("strict") && failCount > 0 && !setting.LibraryMode {
 		return fmt.Errorf("fail to download some packages")
 	}
 	return nil
