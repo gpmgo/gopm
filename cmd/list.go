@@ -17,7 +17,7 @@ package cmd
 import (
 	"fmt"
 	"path"
-	"sort"
+	_"sort"
 	"strings"
 
 	"github.com/gpmgo/gopm/modules/base"
@@ -83,7 +83,7 @@ func getDepList(ctx *cli.Context, target, pkgPath, vendor string) ([]string, err
 			list = append(list, name)
 		}
 	}
-	sort.Strings(list)
+	//sort.Strings(list)
 	return list, nil
 }
 

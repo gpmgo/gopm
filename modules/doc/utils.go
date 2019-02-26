@@ -297,7 +297,25 @@ func ListImports(importPath, rootPath, vendorPath, srcPath, tags string, isTest 
 		if setting.Debug {
 			log.Debug("Found dependency: %s", name)
 		}
+
 		imports = append(imports, name)
+		pk := path.Join(setting.InstallGopath, name)
+		vd := path.Join(setting.DefaultVendorSrc, name)
+		//引入的包再分析一次;
+		if base.IsDir(pk) {
+			pkImports, err := ListImports(name, name, vd, pk, tags, isTest)
+			if (err != nil) {
+				continue
+			}
+			if len(pkImports) > 0 {
+				imports = append(imports, "-SUB_DEPS:" + name + "")
+				for _, pkName := range pkImports {
+					imports = append(imports, pkName)
+				}
+			}
+
+		}
+
 	}
 	return imports, nil
 }
