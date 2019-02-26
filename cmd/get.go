@@ -264,25 +264,17 @@ func getByGopmfile(ctx *cli.Context) error {
 		return err
 	}
 
-	imports, err := getDepList(ctx, target, setting.WorkDir, setting.DefaultVendor)
-	if err != nil {
-		return err
-	}
-
-	// Check if dependency has version.
-	nodes := make([]*doc.Node, 0, len(imports))
-	for _, name := range imports {
+	allDeps, _ := gf.GetSection("deps")
+	nodes := make([]*doc.Node, 0, len(allDeps))
+	for name, v := range allDeps {
 		name = doc.GetRootPath(name)
 		n := doc.NewNode(name, doc.BRANCH, "", !ctx.Bool("download"))
-
-		// Check if user specified the version.
-		if v := gf.MustValue("deps", name); len(v) > 0 {
+		if len(v) > 0 {
 			n.Type, n.Value, err = validPkgInfo(v)
 			n = doc.NewNode(name, n.Type, n.Value, !ctx.Bool("download"))
 		}
 		nodes = append(nodes, n)
 	}
-
 	return getPackages(target, ctx, nodes)
 }
 
