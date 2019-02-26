@@ -67,9 +67,7 @@ func runGen(ctx *cli.Context) {
 		// Check if user has specified the version.
 		if val := gf.MustValue("deps", name); len(val) == 0 {
 			gf.SetValue("deps", name, "")
-
 		}
-
 	}
 
 	// Check resources.
