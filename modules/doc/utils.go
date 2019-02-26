@@ -176,6 +176,7 @@ var standardPath = map[string]bool{
 	"math/big":                  true,
 	"math/cmplx":                true,
 	"math/rand":                 true,
+	"math/bits":				 true,
 	"mime":                      true,
 	"mime/multipart":            true,
 	"mime/quotedprintable":      true,
