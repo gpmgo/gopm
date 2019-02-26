@@ -130,9 +130,6 @@ func downloadPackages(target string, ctx *cli.Context, nodes []*doc.Node) (err e
 			if setting.LibraryMode {
 				errors.AppendError(errors.NewErrInvalidPackage(n.VerString()))
 			}
-			if strings.Index(n.VerString(), "-SUB_DEPS") == 0 {
-				continue
-			}
 			log.Error("Skipped invalid package: " + n.VerString())
 			failCount++
 			continue

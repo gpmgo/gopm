@@ -308,7 +308,6 @@ func ListImports(importPath, rootPath, vendorPath, srcPath, tags string, isTest 
 				continue
 			}
 			if len(pkImports) > 0 {
-				imports = append(imports, "-SUB_DEPS:" + name + "")
 				for _, pkName := range pkImports {
 					imports = append(imports, pkName)
 				}
