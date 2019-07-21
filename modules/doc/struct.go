@@ -43,12 +43,12 @@ type service struct {
 
 // services is the list of source code control services handled by gopm.
 var services = []*service{
-// {githubPattern, "github.com/", getGithubPkg},
-// {googlePattern, "code.google.com/", getGooglePkg},
-// {bitbucketPattern, "bitbucket.org/", getBitbucketPkg},
-// {oscPattern, "git.oschina.net/", getOscPkg},
-// {gitcafePattern, "gitcafe.com/", getGitcafePkg},
-// {launchpadPattern, "launchpad.net/", getLaunchpadPkg},
+	// {githubPattern, "github.com/", getGithubPkg},
+	// {googlePattern, "code.google.com/", getGooglePkg},
+	// {bitbucketPattern, "bitbucket.org/", getBitbucketPkg},
+	// {oscPattern, "git.oschina.net/", getOscPkg},
+	// {gitcafePattern, "gitcafe.com/", getGitcafePkg},
+	// {launchpadPattern, "launchpad.net/", getLaunchpadPkg},
 }
 
 type RevisionType string
@@ -179,8 +179,8 @@ func (n *Node) CopyToGopath() error {
 		if setting.LibraryMode {
 			return fmt.Errorf("Fail to copy to GOPATH: %v", err)
 		}
-		log.Error("", "Fail to copy to GOPATH:")
-		log.Fatal("", "\t"+err.Error())
+		log.Error("Fail to copy to GOPATH:")
+		log.Fatal("\t%v", err)
 	}
 	log.Info("Package copied to GOPATH: %s", n.RootPath)
 	return nil
@@ -193,8 +193,8 @@ func (n *Node) UpdateByVcs(vcs string) error {
 		branch, stderr, err := base.ExecCmdDir(n.InstallGopath,
 			"git", "rev-parse", "--abbrev-ref", "HEAD")
 		if err != nil {
-			log.Error("", "Error occurs when 'git rev-parse --abbrev-ref HEAD'")
-			log.Error("", "\t"+stderr)
+			log.Error("Error occurs when 'git rev-parse --abbrev-ref HEAD'")
+			log.Error("\t%s", stderr)
 			return errors.New(stderr)
 		}
 		branch = strings.TrimSpace(branch)
@@ -202,32 +202,32 @@ func (n *Node) UpdateByVcs(vcs string) error {
 		_, stderr, err = base.ExecCmdDir(n.InstallGopath,
 			"git", "pull", "origin", branch)
 		if err != nil {
-			log.Error("", "Error occurs when 'git pull origin "+branch+"'")
-			log.Error("", "\t"+stderr)
+			log.Error("Error occurs when 'git pull origin %s'", branch)
+			log.Error("\t%s", stderr)
 			return errors.New(stderr)
 		}
 	case "hg":
 		_, stderr, err := base.ExecCmdDir(n.InstallGopath,
 			"hg", "pull")
 		if err != nil {
-			log.Error("", "Error occurs when 'hg pull'")
-			log.Error("", "\t"+stderr)
+			log.Error("Error occurs when 'hg pull'")
+			log.Error("\t%s", stderr)
 			return errors.New(stderr)
 		}
 
 		_, stderr, err = base.ExecCmdDir(n.InstallGopath,
 			"hg", "up")
 		if err != nil {
-			log.Error("", "Error occurs when 'hg up'")
-			log.Error("", "\t"+stderr)
+			log.Error("Error occurs when 'hg up'")
+			log.Error("\t%s", stderr)
 			return errors.New(stderr)
 		}
 	case "svn":
 		_, stderr, err := base.ExecCmdDir(n.InstallGopath,
 			"svn", "update")
 		if err != nil {
-			log.Error("", "Error occurs when 'svn update'")
-			log.Error("", "\t"+stderr)
+			log.Error("Error occurs when 'svn update'")
+			log.Error("\t%s", stderr)
 			return errors.New(stderr)
 		}
 	}

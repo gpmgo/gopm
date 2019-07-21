@@ -153,8 +153,8 @@ func execCmd(gopath, curPath string, args ...string) error {
 		if setting.LibraryMode {
 			return fmt.Errorf("Fail to setting GOPATH: %v", err)
 		}
-		log.Error("", "Fail to setting GOPATH:")
-		log.Fatal("", "\t"+err.Error())
+		log.Error("Fail to setting GOPATH:")
+		log.Fatal("\t%v", err)
 	}
 	if setting.HasGOPATHSetting {
 		defer func() {

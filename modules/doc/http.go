@@ -59,8 +59,8 @@ func (t *transport) SetProxy(proxy string) error {
 		if setting.LibraryMode {
 			return fmt.Errorf("Fail to set HTTP proxy: %v", err)
 		}
-		log.Error("", "Fail to set HTTP proxy:")
-		log.Fatal("", "\t"+err.Error())
+		log.Error("Fail to set HTTP proxy:")
+		log.Fatal("\t%v", err)
 	}
 	t.t.Proxy = http.ProxyURL(proxyUrl)
 	return nil
@@ -69,7 +69,7 @@ func (t *transport) SetProxy(proxy string) error {
 var (
 	httpTransport = &transport{
 		t: http.Transport{
-			Dial: timeoutDial,
+			Dial:                  timeoutDial,
 			ResponseHeaderTimeout: *requestTimeout / 2,
 		},
 	}

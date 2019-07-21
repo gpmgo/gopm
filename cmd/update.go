@@ -62,13 +62,13 @@ func loadLocalVerInfo() (ver version) {
 
 	f, err := os.Open(verPath)
 	if err != nil {
-		log.Error("Update", "Fail to open VERSION.json")
-		log.Fatal("", err.Error())
+		log.Error("Update: Fail to open VERSION.json")
+		log.Fatal("\t%v", err)
 	}
 
 	if err := json.NewDecoder(f).Decode(&ver); err != nil {
-		log.Error("Update", "Fail to decode VERSION.json")
-		log.Fatal("", err.Error())
+		log.Error("Update: Fail to decode VERSION.json")
+		log.Fatal("\t%v", err)
 	}
 	return ver
 }
@@ -169,8 +169,8 @@ func runUpdate(ctx *cli.Context) {
 			batPath := path.Join(tmpDir, "update.bat")
 			f, err := os.Create(batPath)
 			if err != nil {
-				log.Error("Update", "Fail to generate bat file")
-				log.Fatal("", err.Error())
+				log.Error("Update: Fail to generate bat file")
+				log.Fatal("\t%v", err)
 			}
 			f.WriteString("@echo off\r\n")
 			f.WriteString(fmt.Sprintf("ping -n 1 127.0.0.1>nul\r\ncopy \"%v\" \"%v\" >nul\r\ndel \"%v\" >nul\r\n\r\n",
@@ -184,8 +184,8 @@ func runUpdate(ctx *cli.Context) {
 			}
 
 			if _, err = os.StartProcess(batPath, []string{batPath}, attr); err != nil {
-				log.Error("Update", "Fail to start bat process")
-				log.Fatal("", err.Error())
+				log.Error("Update: Fail to start bat process")
+				log.Fatal("\t%v", err)
 			}
 		}
 
