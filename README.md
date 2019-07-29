@@ -1,6 +1,6 @@
 🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
 
-In favor of [Go Modules Proxy](https://github.com/golang/go/wiki/Modules#are-there-always-on-module-repositories-and-enterprise-proxies) since Go 1.11, this project will be **archived** and website (gopm.io) will be **taken down** as of **12/31/2019**.
+In favor of [Go Modules Proxy](https://github.com/golang/go/wiki/Modules#are-there-always-on-module-repositories-and-enterprise-proxies) since Go 1.11, this project has been **archived** and website (gopm.io) will be **taken down** as of **12/31/2019**.
 
 🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
 
