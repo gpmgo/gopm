@@ -4,7 +4,7 @@ In favor of [Go Modules Proxy](https://github.com/golang/go/wiki/Modules#are-the
 
 🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨🚨
 
-Go Package Manager [![Build Status](https://travis-ci.org/gpmgo/gopm.svg?branch=master)](https://travis-ci.org/gpmgo/gopm)
+Go Package Manager
 =========================
 
 Gopm (Go Package Manager) is a Go package manage and build tool for Go.
@@ -16,8 +16,6 @@ Please see **[Documentation](https://github.com/gpmgo/docs)** before you start.
 - Go development environment: >= **go1.2**
 
 ## Installation
-
-We use [gobuild](http://gobuild.io) to do online cross-platform compiling work.  You can see the full available binary list [here](http://gobuild.io/gpmgo/gopm/).
 
 ### Install from source code
 
